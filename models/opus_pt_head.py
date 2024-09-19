@@ -83,8 +83,9 @@ class OPUS_PT_Head(BaseModule):
         self._init_layers()
 
     def _init_layers(self):
-        self.init_points = nn.Embedding(self.num_query, 3)
-        nn.init.uniform_(self.init_points.weight, 0, 1)
+        if not self.init_pos_lidar:
+            self.init_points = nn.Embedding(self.num_query, 3)
+            nn.init.uniform_(self.init_points.weight, 0, 1)
 
     def init_weights(self):
         self.transformer.init_weights()
