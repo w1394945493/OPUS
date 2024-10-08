@@ -125,7 +125,8 @@ train_pipeline = [
     dict(type='RandomTransformImage', ida_aug_conf=ida_aug_conf, training=True),
     dict(type='DefaultFormatBundle3D', class_names=object_names),
     dict(type='Collect3D', keys=['img', 'voxel_semantics', 'mask_camera'], meta_keys=(
-        'filename', 'ori_shape', 'img_shape', 'pad_shape', 'lidar2img', 'img_timestamp', 'ego2lidar'))
+        'filename', 'ori_shape', 'img_shape', 'pad_shape', 'ego2occ', 'ego2img', 
+        'ego2lidar', 'img_timestamp'))
 ]
 
 test_pipeline = [
@@ -141,7 +142,7 @@ test_pipeline = [
             dict(type='DefaultFormatBundle3D', class_names=object_names, with_label=False),
             dict(type='Collect3D', keys=['img'], meta_keys=(
                 'filename', 'box_type_3d', 'ori_shape', 'img_shape', 'pad_shape',
-                'lidar2img', 'img_timestamp', 'ego2lidar'))
+                'ego2occ', 'ego2img', 'ego2lidar', 'img_timestamp'))
         ])
 ]
 

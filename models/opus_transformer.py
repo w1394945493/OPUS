@@ -101,13 +101,12 @@ class OPUSTransformerDecoder(BaseModule):
     def forward(self, query_points, query_feat, mlvl_feats, img_metas):
         cls_scores, refine_pts = [], []
 
-        # organize projections matrix and copy to CUDA
-        lidar2img = np.asarray([m['lidar2img'] for m in img_metas]).astype(np.float32)
-        lidar2img = query_feat.new_tensor(lidar2img) # [B, N, 4, 4]
-        ego2lidar = np.asarray([m['ego2lidar'] for m in img_metas]).astype(np.float32)
-        ego2lidar = query_feat.new_tensor(ego2lidar) # [B, 4, 4]
-        ego2lidar = ego2lidar.unsqueeze(1).expand_as(lidar2img)  # [B, N, 4, 4]
-        occ2img = torch.matmul(lidar2img, ego2lidar)
+        ego2img = np.asarray([m['ego2img'] for m in img_metas]).astype(np.float32)
+        ego2img = query_feat.new_tensor(ego2img) # [B, N, 4, 4]
+        ego2occ = np.asarray([m['ego2occ'] for m in img_metas]).astype(np.float32)
+        occ2ego = torch.inverse(query_feat.new_tensor(ego2occ))
+        occ2ego = occ2ego[:, None].expand_as(ego2img)
+        occ2img = ego2img @ occ2ego
 
         # group image features in advance for sampling, see `sampling_4d` for more details
         for lvl, feat in enumerate(mlvl_feats):

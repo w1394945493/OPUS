@@ -7,6 +7,7 @@ from mmdet3d.datasets.builder import PIPELINES
 from numpy.linalg import inv
 from mmcv.runner import get_dist_info
 from mmdet3d.core.points import BasePoints
+from ..utils import compose_ego2img
 
 
 def compose_lidar2img(ego2global_translation_curr,
@@ -101,7 +102,7 @@ class LoadMultiViewImageFromMultiSweeps:
                     results['img'].append(results['img'][j])
                     results['img_timestamp'].append(results['img_timestamp'][j])
                     results['filename'].append(results['filename'][j])
-                    results['lidar2img'].append(np.copy(results['lidar2img'][j]))
+                    results['ego2img'].append(np.copy(results['ego2img'][j]))
         else:
             if self.test_mode:
                 interval = self.test_interval
@@ -128,13 +129,11 @@ class LoadMultiViewImageFromMultiSweeps:
                     results['img'].append(mmcv.imread(sweep[sensor]['data_path'], self.color_type))
                     results['img_timestamp'].append(sweep[sensor]['timestamp'] / 1e6)
                     results['filename'].append(os.path.relpath(sweep[sensor]['data_path']))
-                    results['lidar2img'].append(compose_lidar2img(
+                    results['ego2img'].append(compose_ego2img(
                         results['ego2global_translation'],
                         results['ego2global_rotation'],
-                        results['lidar2ego_translation'],
-                        results['lidar2ego_rotation'],
                         sweep[sensor]['sensor2global_translation'],
-                        sweep[sensor]['sensor2global_rotation'],
+                        sweep[sensor]['sensor2global_rotation'].T,
                         sweep[sensor]['cam_intrinsic'],
                     ))
 
@@ -155,7 +154,7 @@ class LoadMultiViewImageFromMultiSweeps:
                 for j in range(len(cam_types)):
                     results['img_timestamp'].append(results['img_timestamp'][j])
                     results['filename'].append(results['filename'][j])
-                    results['lidar2img'].append(np.copy(results['lidar2img'][j]))
+                    results['ego2img'].append(np.copy(results['ego2img'][j]))
         else:
             interval = self.test_interval
             choices = [(k + 1) * interval - 1 for k in range(self.sweeps_num)]
@@ -171,13 +170,11 @@ class LoadMultiViewImageFromMultiSweeps:
                     # skip loading history frames
                     results['img_timestamp'].append(sweep[sensor]['timestamp'] / 1e6)
                     results['filename'].append(os.path.relpath(sweep[sensor]['data_path']))
-                    results['lidar2img'].append(compose_lidar2img(
+                    results['ego2img'].append(compose_ego2img(
                         results['ego2global_translation'],
                         results['ego2global_rotation'],
-                        results['lidar2ego_translation'],
-                        results['lidar2ego_rotation'],
                         sweep[sensor]['sensor2global_translation'],
-                        sweep[sensor]['sensor2global_rotation'],
+                        sweep[sensor]['sensor2global_rotation'].T,
                         sweep[sensor]['cam_intrinsic'],
                     ))
 
@@ -237,7 +234,7 @@ class LoadMultiViewImageFromMultiSweepsFuture:
                     results['img'].append(results['img'][j])
                     results['img_timestamp'].append(results['img_timestamp'][j])
                     results['filename'].append(results['filename'][j])
-                    results['lidar2img'].append(np.copy(results['lidar2img'][j]))
+                    results['ego2img'].append(np.copy(results['ego2img'][j]))
         else:
             choices = [(k + 1) * interval - 1 for k in range(self.prev_sweeps_num)]
 
@@ -252,13 +249,11 @@ class LoadMultiViewImageFromMultiSweepsFuture:
                     results['img'].append(mmcv.imread(sweep[sensor]['data_path'], self.color_type))
                     results['img_timestamp'].append(sweep[sensor]['timestamp'] / 1e6)
                     results['filename'].append(sweep[sensor]['data_path'])
-                    results['lidar2img'].append(compose_lidar2img(
+                    results['ego2img'].append(compose_ego2img(
                         results['ego2global_translation'],
                         results['ego2global_rotation'],
-                        results['lidar2ego_translation'],
-                        results['lidar2ego_rotation'],
                         sweep[sensor]['sensor2global_translation'],
-                        sweep[sensor]['sensor2global_rotation'],
+                        sweep[sensor]['sensor2global_rotation'].T,
                         sweep[sensor]['cam_intrinsic'],
                     ))
 
@@ -269,7 +264,7 @@ class LoadMultiViewImageFromMultiSweepsFuture:
                     results['img'].append(results['img'][j])
                     results['img_timestamp'].append(results['img_timestamp'][j])
                     results['filename'].append(results['filename'][j])
-                    results['lidar2img'].append(np.copy(results['lidar2img'][j]))
+                    results['ego2img'].append(np.copy(results['ego2img'][j]))
         else:
             choices = [(k + 1) * interval - 1 for k in range(self.next_sweeps_num)]
 
@@ -284,13 +279,11 @@ class LoadMultiViewImageFromMultiSweepsFuture:
                     results['img'].append(mmcv.imread(sweep[sensor]['data_path'], self.color_type))
                     results['img_timestamp'].append(sweep[sensor]['timestamp'] / 1e6)
                     results['filename'].append(sweep[sensor]['data_path'])
-                    results['lidar2img'].append(compose_lidar2img(
+                    results['ego2img'].append(compose_ego2img(
                         results['ego2global_translation'],
                         results['ego2global_rotation'],
-                        results['lidar2ego_translation'],
-                        results['lidar2ego_rotation'],
                         sweep[sensor]['sensor2global_translation'],
-                        sweep[sensor]['sensor2global_rotation'],
+                        sweep[sensor]['sensor2global_rotation'].T,
                         sweep[sensor]['cam_intrinsic'],
                     ))
 
@@ -341,13 +334,13 @@ class LoadMultiViewImageFromMultiSweepsFutureInterleave:
             img=[],
             img_timestamp=[],
             filename=[],
-            lidar2img=[]
+            ego2img=[],
         )
         results_next = dict(
             img=[],
             img_timestamp=[],
             filename=[],
-            lidar2img=[]
+            ego2img=[],
         )
 
         if len(results['sweeps']['prev']) == 0:
@@ -356,7 +349,7 @@ class LoadMultiViewImageFromMultiSweepsFutureInterleave:
                     results_prev['img'].append(results['img'][j])
                     results_prev['img_timestamp'].append(results['img_timestamp'][j])
                     results_prev['filename'].append(results['filename'][j])
-                    results_prev['lidar2img'].append(np.copy(results['lidar2img'][j]))
+                    results_prev['ego2img'].append(np.copy(results['ego2img'][j]))
         else:
             choices = [(k + 1) * interval - 1 for k in range(self.prev_sweeps_num)]
 
@@ -371,13 +364,11 @@ class LoadMultiViewImageFromMultiSweepsFutureInterleave:
                     results_prev['img'].append(mmcv.imread(sweep[sensor]['data_path'], self.color_type))
                     results_prev['img_timestamp'].append(sweep[sensor]['timestamp'] / 1e6)
                     results_prev['filename'].append(os.path.relpath(sweep[sensor]['data_path']))
-                    results_prev['lidar2img'].append(compose_lidar2img(
+                    results['ego2img'].append(compose_ego2img(
                         results['ego2global_translation'],
                         results['ego2global_rotation'],
-                        results['lidar2ego_translation'],
-                        results['lidar2ego_rotation'],
                         sweep[sensor]['sensor2global_translation'],
-                        sweep[sensor]['sensor2global_rotation'],
+                        sweep[sensor]['sensor2global_rotation'].T,
                         sweep[sensor]['cam_intrinsic'],
                     ))
 
@@ -388,7 +379,7 @@ class LoadMultiViewImageFromMultiSweepsFutureInterleave:
                     results_next['img'].append(results['img'][j])
                     results_next['img_timestamp'].append(results['img_timestamp'][j])
                     results_next['filename'].append(results['filename'][j])
-                    results_next['lidar2img'].append(np.copy(results['lidar2img'][j]))
+                    results_next['ego2img'].append(np.copy(results['ego2img'][j]))
         else:
             choices = [(k + 1) * interval - 1 for k in range(self.next_sweeps_num)]
 
@@ -403,13 +394,11 @@ class LoadMultiViewImageFromMultiSweepsFutureInterleave:
                     results_next['img'].append(mmcv.imread(sweep[sensor]['data_path'], self.color_type))
                     results_next['img_timestamp'].append(sweep[sensor]['timestamp'] / 1e6)
                     results_next['filename'].append(os.path.relpath(sweep[sensor]['data_path']))
-                    results_next['lidar2img'].append(compose_lidar2img(
+                    results['ego2img'].append(compose_ego2img(
                         results['ego2global_translation'],
                         results['ego2global_rotation'],
-                        results['lidar2ego_translation'],
-                        results['lidar2ego_rotation'],
                         sweep[sensor]['sensor2global_translation'],
-                        sweep[sensor]['sensor2global_rotation'],
+                        sweep[sensor]['sensor2global_rotation'].T,
                         sweep[sensor]['cam_intrinsic'],
                     ))
 
@@ -421,13 +410,13 @@ class LoadMultiViewImageFromMultiSweepsFutureInterleave:
                 results['img'].append(results_prev['img'][i * 6 + j])
                 results['img_timestamp'].append(results_prev['img_timestamp'][i * 6 + j])
                 results['filename'].append(results_prev['filename'][i * 6 + j])
-                results['lidar2img'].append(results_prev['lidar2img'][i * 6 + j])
+                results['ego2img'].append(results_prev['ego2img'][i * 6 + j])
 
             for j in range(6):
                 results['img'].append(results_next['img'][i * 6 + j])
                 results['img_timestamp'].append(results_next['img_timestamp'][i * 6 + j])
                 results['filename'].append(results_next['filename'][i * 6 + j])
-                results['lidar2img'].append(results_next['lidar2img'][i * 6 + j])
+                results['ego2img'].append(results_next['ego2img'][i * 6 + j])
 
         return results
 

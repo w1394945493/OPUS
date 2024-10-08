@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 from numpy import random
 from mmdet.datasets.builder import PIPELINES
+from torchvision.transforms.functional import affine
 
 
 @PIPELINES.register_module()
@@ -224,7 +225,7 @@ class RandomTransformImage:
     def __call__(self, results):
         resize, resize_dims, crop, flip, rotate = self.sample_augmentation()
         
-        if len(results['lidar2img']) == len(results['img']):
+        if len(results['ego2img']) == len(results['img']):
             for i in range(len(results['img'])):
                 img = Image.fromarray(np.uint8(results['img'][i]))
                 
@@ -238,7 +239,7 @@ class RandomTransformImage:
                     rotate=rotate,
                 )
                 results['img'][i] = np.array(img).astype(np.uint8)
-                results['lidar2img'][i] = ida_mat @ results['lidar2img'][i]
+                results['ego2img'][i] = ida_mat @ results['ego2img'][i]
 
         elif len(results['img']) == 6:
             for i in range(len(results['img'])):
@@ -255,8 +256,8 @@ class RandomTransformImage:
                 )
                 results['img'][i] = np.array(img).astype(np.uint8)
 
-            for i in range(len(results['lidar2img'])):
-                results['lidar2img'][i] = ida_mat @ results['lidar2img'][i]
+            for i in range(len(results['ego2img'])):
+                results['ego2img'][i] = ida_mat @ results['ego2img'][i]
 
         else:
             raise ValueError()
@@ -341,54 +342,79 @@ class RandomTransformImage:
         return resize, resize_dims, crop, flip, rotate
 
 
+# Modified from BEVAug from https://github.com/HuangJunJie2017/BEVDet/blob/dev3.0/mmdet3d/datasets/pipelines/loading.py
 @PIPELINES.register_module()
-class GlobalRotScaleTransImage:
-    def __init__(self,
-                 rot_range=[-0.3925, 0.3925],
-                 scale_ratio_range=[0.95, 1.05],
-                 translation_std=[0, 0, 0]):
-        self.rot_range = rot_range
-        self.scale_ratio_range = scale_ratio_range
-        self.translation_std = translation_std
+class RandomTransformOcc:
+
+    def __init__(self, bda_aug_conf):
+        self.bda_aug_conf = bda_aug_conf
+
+    def sample_bda_augmentation(self):
+        """Generate bda augmentation values based on bda_config."""
+        rotate_bda = np.random.uniform(*self.bda_aug_conf['rot_lim'])
+        scale_bda = np.random.uniform(*self.bda_aug_conf['scale_lim'])
+        flip_dx = np.random.uniform() < self.bda_aug_conf['flip_dx_ratio']
+        flip_dy = np.random.uniform() < self.bda_aug_conf['flip_dy_ratio']
+        return rotate_bda, scale_bda, flip_dx, flip_dy
+
+    def bev_transform(self, rotate_angle, scale_ratio, flip_dx, flip_dy):
+        rotate_angle = rotate_angle / 180 * np.pi
+        rot_sin, rot_cos = np.sin(rotate_angle), np.cos(rotate_angle)
+
+        # construct matrix
+        rot_mat = np.array([[rot_cos, -rot_sin, 0],
+                            [rot_sin, rot_cos,  0],
+                            [0,       0,        1]])
+        scale_mat = np.array([[scale_ratio, 0, 0],
+                              [0, scale_ratio, 0],
+                              [0, 0, scale_ratio]])
+        flip_mat = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        if flip_dx:
+            flip_mat = flip_mat @ np.array([
+                [-1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        if flip_dy:
+            flip_mat = flip_mat @ np.array([
+                [1, 0, 0], [0, -1, 0], [0, 0, 1]])
+        
+        return flip_mat @ scale_mat @ rot_mat
+    
+    def affine(self, block, angle, scale, fill=-1):
+        block = torch.from_numpy(block).permute(2, 0, 1)
+        block = affine(
+            img=block,
+            angle=-angle, # torchvision rotate clockwise driection
+            translate=[0, 0],
+            scale=scale,
+            shear=0,
+            fill=fill).permute(1, 2, 0)
+        return block.numpy()
 
     def __call__(self, results):
-        # random rotate
-        rot_angle = np.random.uniform(*self.rot_range)
-        self.rotate_z(results, rot_angle)
-        results["gt_bboxes_3d"].rotate(np.array(rot_angle))
+        rotate_bda, scale_bda, flip_dx, flip_dy = self.sample_bda_augmentation()
+        M = self.bev_transform(rotate_bda, scale_bda, flip_dx, flip_dy)
 
-        # random scale
-        scale_ratio = np.random.uniform(*self.scale_ratio_range)
-        self.scale_xyz(results, scale_ratio)
-        results["gt_bboxes_3d"].scale(scale_ratio)
-
-        # TODO: support translation
+        bda_mat = np.eye(4)
+        bda_mat[:3, :3] = M
+        
+        semantics = results['voxel_semantics']
+        mask_lidar = results['mask_lidar']
+        mask_camera = results['mask_camera']
+        if rotate_bda != 0 or scale_bda != 1.0:
+            semantics = self.affine(semantics, rotate_bda, scale_bda, fill=17)
+            mask_lidar = self.affine(mask_lidar, rotate_bda, scale_bda, fill=False)
+            mask_camera = self.affine(mask_camera, rotate_bda, scale_bda, fill=False)
+        if flip_dx:
+            semantics = semantics[::-1, ...]
+            mask_lidar = mask_lidar[::-1, ...]
+            mask_camera = mask_camera[::-1, ...]
+        if flip_dy:
+            semantics = semantics[:, ::-1, ...]
+            mask_lidar = mask_lidar[:, ::-1, ...]
+            mask_camera = mask_camera[:, ::-1, ...]
+        
+        results['voxel_semantics'] = semantics.copy()
+        results['mask_lidar'] = mask_lidar.copy()
+        results['mask_camera'] = mask_camera.copy()
+        results['ego2occ'] = bda_mat @ results['ego2occ']
 
         return results
-
-    def rotate_z(self, results, rot_angle):
-        rot_cos = torch.cos(torch.tensor(rot_angle))
-        rot_sin = torch.sin(torch.tensor(rot_angle))
-
-        rot_mat = torch.tensor([
-            [rot_cos, -rot_sin, 0, 0],
-            [rot_sin, rot_cos, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1],
-        ])
-        rot_mat_inv = torch.inverse(rot_mat)
-
-        for view in range(len(results['lidar2img'])):
-            results['lidar2img'][view] = (torch.tensor(results['lidar2img'][view]).float() @ rot_mat_inv).numpy()
-
-    def scale_xyz(self, results, scale_ratio):
-        scale_mat = torch.tensor([
-            [scale_ratio, 0, 0, 0],
-            [0, scale_ratio, 0, 0],
-            [0, 0, scale_ratio, 0],
-            [0, 0, 0, 1],
-        ])
-        scale_mat_inv = torch.inverse(scale_mat)
-
-        for view in range(len(results['lidar2img'])):
-            results['lidar2img'][view] = (torch.tensor(results['lidar2img'][view]).float() @ scale_mat_inv).numpy()

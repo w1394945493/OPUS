@@ -12,6 +12,7 @@ from nuscenes.utils.geometry_utils import transform_matrix
 from torch.utils.data import DataLoader
 from models.utils import sparse2dense
 from .old_metrics import Metric_mIoU
+from .utils import compose_ego2img
 
 
 @DATASETS.register_module()
@@ -85,6 +86,7 @@ class NuScenesOccDataset(NuScenesDataset):
             scene_name=info['scene_name'],
             timestamp=info['timestamp'] / 1e6,
             ego2lidar=ego2lidar,
+            ego2occ=np.eye(4),
             ego2global_translation=ego2global_translation,
             ego2global_rotation=ego2global_rotation_mat,
             lidar2ego_translation=lidar2ego_translation,
@@ -101,32 +103,27 @@ class NuScenesOccDataset(NuScenesDataset):
         if self.modality['use_camera']:
             img_paths = []
             img_timestamps = []
-            lidar2img_rts = []
+            ego2img = []
 
             for _, cam_info in info['cams'].items():
                 img_paths.append(os.path.relpath(cam_info['data_path']))
                 img_timestamps.append(cam_info['timestamp'] / 1e6)
-
-                # obtain lidar to image transformation matrix
-                lidar2cam_r = np.linalg.inv(cam_info['sensor2lidar_rotation'])
-                lidar2cam_t = cam_info['sensor2lidar_translation'] @ lidar2cam_r.T
-
-                lidar2cam_rt = np.eye(4)
-                lidar2cam_rt[:3, :3] = lidar2cam_r.T
-                lidar2cam_rt[3, :3] = -lidar2cam_t
-                
-                intrinsic = cam_info['cam_intrinsic']
-                viewpad = np.eye(4)
-                viewpad[:intrinsic.shape[0], :intrinsic.shape[1]] = intrinsic
-                lidar2img_rt = (viewpad @ lidar2cam_rt.T)
-                lidar2img_rts.append(lidar2img_rt)
+                ego2img.append(
+                    compose_ego2img(
+                        ego2global_translation,
+                        ego2global_rotation_mat,
+                        cam_info['sensor2global_translation'],
+                        cam_info['sensor2global_rotation'].T,
+                        cam_info['cam_intrinsic']
+                    )
+                )
 
             cam_sweeps_prev, cam_sweeps_next = self.collect_cam_sweeps(index)
 
             input_dict.update(dict(
                 img_filename=img_paths,
                 img_timestamp=img_timestamps,
-                lidar2img=lidar2img_rts,
+                ego2img=ego2img,
                 cam_sweeps={'prev': cam_sweeps_prev, 'next': cam_sweeps_next},
             ))
 
