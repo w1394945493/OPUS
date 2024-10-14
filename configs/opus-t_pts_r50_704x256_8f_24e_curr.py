@@ -211,7 +211,7 @@ lr_config = dict(
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3
 )
-total_epochs = 100
+total_epochs = 24
 batch_size = 8
 
 # load pretrained weights
