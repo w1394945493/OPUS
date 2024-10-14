@@ -5,5 +5,7 @@ from .opus import OPUS
 from .opus_head import OPUSHead
 from .opus_transformer import OPUSTransformer
 
+from .opus_head_bg import OPUSHeadBG
+
 
 __all__ = ['OPUS', 'OPUSHead', 'OPUSTransformer']
