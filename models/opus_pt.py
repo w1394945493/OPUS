@@ -131,8 +131,16 @@ class OPUS_PT(MVXTwoStageDetector):
 
         return img_feats_reshaped
     
-    def extract_pts_feat(self, points):
-        raise NotImplementedError
+    @auto_fp16(apply_to=('pts'), out_fp32=True)
+    def extract_pts_feat(self, pts):
+        voxels, num_points, coors = self.voxelize(pts)
+        voxel_features = self.pts_voxel_encoder(voxels, num_points, coors)
+        batch_size = coors[-1, 0] + 1
+        x = self.pts_middle_encoder(voxel_features, coors, batch_size)
+        x = self.pts_backbone(x)
+        if self.with_pts_neck:
+            x = self.pts_neck(x)
+        return x
 
     @force_fp32(apply_to=('img', 'points'))
     def forward(self, return_loss=True, **kwargs):
@@ -194,7 +202,7 @@ class OPUS_PT(MVXTwoStageDetector):
  
         # forward occ head
         outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
-                                   img_metas=img_metas, points=points)
+                                  img_metas=img_metas, points=points)
         loss_inputs = [voxel_semantics, mask_camera, outs]
         losses = self.pts_bbox_head.loss(*loss_inputs)
 
