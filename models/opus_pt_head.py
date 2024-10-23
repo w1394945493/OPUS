@@ -22,7 +22,6 @@ class OPUS_PT_Head(BaseModule):
                  empty_label=17,
                  voxel_size=[],
                  init_pos_lidar=None,
-                 init_query_size=None,
                  train_cfg=dict(),
                  test_cfg=dict(max_per_img=100),
                  loss_cls=dict(
@@ -54,21 +53,11 @@ class OPUS_PT_Head(BaseModule):
             max_voxels=self.num_query * self.num_refines[-1],
             deterministic=False
         )
-
         # position initialization
         assert init_pos_lidar in [None, 'all', 'curr'], \
             'init_pos_lidar should be one of [None, "all", "curr"], ' \
             f'but got {init_pos_lidar}'
         self.init_pos_lidar = init_pos_lidar
-        init_query_size = voxel_size if init_query_size is None \
-            else init_query_size
-        self.init_voxel_generator = Voxelization(
-            voxel_size=init_query_size,
-            point_cloud_range=pc_range,
-            max_num_points=10,
-            max_voxels=self.num_query * self.num_refines[-1],
-            deterministic=False
-        )
 
         # prepare scene
         pc_range = torch.tensor(pc_range)
@@ -106,11 +95,8 @@ class OPUS_PT_Head(BaseModule):
                     # Only use the current lidar points
                     pts = pts[pts[:, -1]==0]
 
-                _, voxels, num_pts = self.init_voxel_generator(pts)
-                voxels = torch.flip(voxels, [1])
-                pts = (voxels + 0.5) * self.voxel_size + self.pc_range[:3]
                 # random sample by furthest points sampling
-                pts = pts.unsqueeze(0)
+                pts = pts[..., :3].contiguous().unsqueeze(0)
                 sample_idx=furthest_point_sample(pts, self.num_query)
                 init_points.append(gather_points(
                     pts.transpose(1,2).contiguous(), sample_idx).transpose(1,2))
