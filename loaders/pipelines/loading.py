@@ -575,7 +575,7 @@ class LoadPointsFromMultiSweeps:
 
 @PIPELINES.register_module()
 class PointsFromLiDARToEgo:
-
+    ### transform the ldiar coord to lidar ego coord
     def __init__(self, base='ego'):
         self.base = base
     
