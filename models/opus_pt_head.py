@@ -59,18 +59,6 @@ class OPUS_PT_Head(BaseModule):
             'init_pos_lidar should be one of [None, "all", "curr"], ' \
             f'but got {init_pos_lidar}'
         self.init_pos_lidar = init_pos_lidar
-<<<<<<< HEAD
-=======
-        init_query_size = pc_voxel_size if init_query_size is None \
-            else init_query_size
-        self.init_voxel_generator = Voxelization(
-            voxel_size=init_query_size,
-            point_cloud_range=pc_range,
-            max_num_points=10,
-            max_voxels=self.num_query * self.num_refines[-1],
-            deterministic=False
-        )
->>>>>>> cc2cfaca86efaee2fd488cb2dce82f1ce366f56d
 
         # prepare scene
         pc_range = torch.tensor(pc_range)
