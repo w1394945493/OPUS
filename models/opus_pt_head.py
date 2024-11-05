@@ -21,6 +21,7 @@ class OPUS_PT_Head(BaseModule):
                  pc_range=[],
                  empty_label=17,
                  voxel_size=[],
+                 pc_voxel_size=[],
                  init_pos_lidar=None,
                  init_query_size=None,
                  train_cfg=dict(),
@@ -60,7 +61,7 @@ class OPUS_PT_Head(BaseModule):
             'init_pos_lidar should be one of [None, "all", "curr"], ' \
             f'but got {init_pos_lidar}'
         self.init_pos_lidar = init_pos_lidar
-        init_query_size = voxel_size if init_query_size is None \
+        init_query_size = pc_voxel_size if init_query_size is None \
             else init_query_size
         self.init_voxel_generator = Voxelization(
             voxel_size=init_query_size,
@@ -75,10 +76,12 @@ class OPUS_PT_Head(BaseModule):
         scene_size = pc_range[3:] - pc_range[:3]
         voxel_size = torch.tensor(voxel_size)
         voxel_num = (scene_size / voxel_size).long()
+        pc_voxel_size = torch.tensor(pc_voxel_size)
         self.register_buffer('pc_range', pc_range)
         self.register_buffer('scene_size', scene_size)
         self.register_buffer('voxel_size', voxel_size)
         self.register_buffer('voxel_num', voxel_num)
+        self.register_buffer('pc_voxel_size', pc_voxel_size)
 
         self._init_layers()
 
@@ -108,7 +111,7 @@ class OPUS_PT_Head(BaseModule):
 
                 _, voxels, num_pts = self.init_voxel_generator(pts)
                 voxels = torch.flip(voxels, [1])
-                pts = (voxels + 0.5) * self.voxel_size + self.pc_range[:3]
+                pts = (voxels + 0.5) * self.pc_voxel_size + self.pc_range[:3]
                 # random sample by furthest points sampling
                 pts = pts.unsqueeze(0)
                 sample_idx=furthest_point_sample(pts, self.num_query)
@@ -127,10 +130,15 @@ class OPUS_PT_Head(BaseModule):
                 img_metas=None):
         init_points, query_feat = self.get_init_position(points, mlvl_feats,
                                                          pts_feats, img_metas)
+        # ## hardcode
+        # self.voxel_num=torch.tensor([200, 200, 16]).cuda()
+        # self.voxel_size=torch.tensor([0.4,0.4,0.4]).cuda()
+
         cls_scores, refine_pts = self.transformer(
             init_points,
             query_feat,
             mlvl_feats,
+            pts_feats,
             img_metas=img_metas,
         )
 

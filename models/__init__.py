@@ -16,7 +16,14 @@ from .pts_only_model import PT
 from .pt_head import BEVOCCHead2D
 from .pt_head3d import BEVOCCHead3Dv1,BEVOCCHead3Dv2
 
+from .opus_transformer_pt import OPUSTransformer_PT
+from .opus_transformer_pt2 import OPUSTransformer_PT2
+from .opus_transformer_pt3 import OPUSTransformer_PT3
+from .opus_transformer_pt4 import OPUSTransformer_PT4
+
 
 __all__ = ['OPUS', 'OPUSHead', 'OPUSTransformer', 'OPUS_PT',
            'OPUS_PT_Head',
-           'PT','BEVOCCHead2D','BEVOCCHead3Dv1','BEVOCCHead3Dv2']
+           'PT','BEVOCCHead2D','BEVOCCHead3Dv1','BEVOCCHead3Dv2',
+           'OPUSTransformer_PT','OPUSTransformer_PT2','OPUSTransformer_PT3',
+           'OPUSTransformer_PT4',]

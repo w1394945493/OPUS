@@ -169,7 +169,7 @@ class BEVOCCHead3Dv2(BaseModule):
         Returns:
 
         """
-        # (B, C, Dz, Dy, Dx) --> (B, C, Dz, Dy, Dx) --> (B, Dx, Dy, Dz, C)
+        # (B, C, Dz, Dy, Dx) --> (B, Dx, Dy, Dz, C)
         occ_pred =img_feats.permute(0, 4, 3, 2, 1)
         
         if self.use_predicter:

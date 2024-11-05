@@ -199,6 +199,9 @@ class OPUS_PT(MVXTwoStageDetector):
             self.extract_img_feat(img, img_metas)
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
+        
+        ## pts_feats: (B, C, Dz, Dy, Dx)->(B,C,Dx,Dy,Dz)
+        pts_feats=pts_feats[0].permute(0,1,4,3,2)
  
         # forward occ head
         outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
@@ -225,12 +228,18 @@ class OPUS_PT(MVXTwoStageDetector):
             return self.simple_test_offline(img_metas, img, points, rescale)
 
     def simple_test_offline(self, img_metas, img=None, points=None, rescale=False):
+        self.fp16_enabled = False
         img_feats = None if not self.with_img_backbone else \
             self.extract_img_feat(img, img_metas)
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
+        
+        pts_feats=pts_feats[0].permute(0,1,4,3,2)
+
         outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
                                   img_metas=img_metas, points=points)
+        
+        torch.cuda.empty_cache()
         return self.pts_bbox_head.get_occ(outs, img_metas[0], rescale=rescale)
 
     def simple_test_online(self, img_metas, img=None, points=None, rescale=False):
@@ -299,6 +308,8 @@ class OPUS_PT(MVXTwoStageDetector):
         # extract points features
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
+
+        pts_feats=pts_feats[0].permute(0,1,4,3,2)
 
         # run occupancy predictor
         outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
