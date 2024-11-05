@@ -1,3 +1,10 @@
+'''
+    navie version:
+        the neck:upsample
+        sample pattern:sampled voxel feat in a interpolation way and average directly
+        fusion way: add and proj
+'''
+
 dataset_type = 'NuScenesOccDataset'
 dataset_root = 'data/nuscenes/'
 occ_root = 'data/nuscenes/gts/'
@@ -26,7 +33,8 @@ occ_names = [
 # If point cloud range is changed, the models should also change their point
 # cloud range accordingly
 point_cloud_range = [-40.0, -40.0, -1.0, 40.0, 40.0, 5.4]
-voxel_size = [0.05, 0.05, 0.16]
+pc_voxel_size = [0.05, 0.05, 0.05]
+voxel_size = [0.4, 0.4, 0.4]
 
 # arch config
 embed_dims = 256
@@ -57,34 +65,37 @@ img_norm_cfg = dict(
     std=[58.395, 57.120, 57.375],
     to_rgb=True)
 
-pts_voxel_layer=dict(max_num_points=10, voxel_size=voxel_size,
+pts_voxel_layer=dict(max_num_points=10, voxel_size=pc_voxel_size,
                      max_voxels=(90000, 120000), point_cloud_range=point_cloud_range)
 pts_voxel_encoder=dict(type='HardSimpleVFE', num_features=5)
 pts_middle_encoder=dict(
-    type='SparseEncoder',
+    type='SparseEncoder8x',
     in_channels=5,
-    sparse_shape=[41, 1600, 1600],
+    sparse_shape=[128, 1600, 1600],
     output_channels=128,
     order=('conv', 'norm', 'act'),
-    encoder_channels=((16, 16, 32), (32, 32, 64), (64, 64, 128), (128,
-                                                                    128)),
-    encoder_paddings=((0, 0, 1), (0, 0, 1), (0, 0, [0, 1, 1]), (0, 0)),
+    encoder_channels=((16, 16, 32), 
+                      (32, 32, 64), 
+                      (64, 64, 128), 
+                      (128,128)),
+    encoder_paddings=((0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0)),
     block_type='basicblock')
 pts_backbone=dict(
-    type='SECOND',
-    in_channels=256,
+    type='SECOND_3d',
+    in_channels=128,
+    sparse_conv_cnt=0,
     out_channels=[128, 256],
     layer_nums=[5, 5],
     layer_strides=[1, 2],
-    norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
-    conv_cfg=dict(type='Conv2d', bias=False))
+    norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
+    conv_cfg=None)
 pts_neck=dict(
-    type='SECONDFPN',
-    in_channels=[128, 256],
-    out_channels=[256, 256],
+    type='SECONDFPN_3dv3',
+    in_channels=[128],
+    out_channels=[256], 
     upsample_strides=[1, 2],
-    norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
-    upsample_cfg=dict(type='deconv', bias=False),
+    norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
+    upsample_cfg=dict(type='SparseConvTranspose3d'),
     use_conv_for_no_stride=True)
 
 model = dict(
@@ -109,9 +120,10 @@ model = dict(
         num_query=num_query,
         pc_range=point_cloud_range,
         voxel_size=voxel_size,
+        pc_voxel_size=pc_voxel_size,
         init_pos_lidar='curr',
         transformer=dict(
-            type='OPUSTransformer',
+            type='OPUSTransformer_PT4',
             embed_dims=embed_dims,
             num_frames=num_frames,
             num_points=num_points,
@@ -191,6 +203,7 @@ test_pipeline = [
 ]
 
 data = dict(
+    # workers_per_gpu=1,
     workers_per_gpu=4,
     train=dict(
         type=dataset_type,
@@ -247,7 +260,8 @@ lr_config = dict(
     min_lr_ratio=1e-3
 )
 total_epochs = 24
-batch_size = 1
+# batch_size = 1
+batch_size = 8
 
 # load pretrained weights
 load_from = 'pretrain/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth'

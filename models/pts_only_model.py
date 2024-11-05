@@ -12,11 +12,8 @@ from .utils import GridMask, pad_multiple, GpuPhotoMetricDistortion
 
 
 @DETECTORS.register_module()
-class OPUS_PT(MVXTwoStageDetector):
+class PT(MVXTwoStageDetector):
     def __init__(self,
-                 use_grid_mask=True,
-                 data_aug=None,
-                 stop_prev_grad=0,
                  pts_voxel_layer=None,
                  pts_voxel_encoder=None,
                  pts_middle_encoder=None,
@@ -35,12 +32,7 @@ class OPUS_PT(MVXTwoStageDetector):
                          pts_fusion_layer, img_backbone, pts_backbone, img_neck,
                          pts_neck, pts_bbox_head, img_roi_head, img_rpn_head,
                          train_cfg, test_cfg, pretrained)
-        self.data_aug = data_aug
-        self.stop_prev_grad = stop_prev_grad
-        self.color_aug = GpuPhotoMetricDistortion()
-        self.grid_mask = GridMask(ratio=0.5, prob=0.7)
-        self.use_grid_mask = use_grid_mask
-
+        
         self.memory = {}
         self.queue = queue.Queue()
 
@@ -200,13 +192,12 @@ class OPUS_PT(MVXTwoStageDetector):
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
         
-        ## pts_feats: (B, C, Dz, Dy, Dx)->(B,C,Dx,Dy,Dz)
-        pts_feats=pts_feats[0].permute(0,1,4,3,2)
+        pts_bev_feat=pts_feats[0]
  
         # forward occ head
-        outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
-                                  img_metas=img_metas, points=points)
-        loss_inputs = [voxel_semantics, mask_camera, outs]
+        outs = self.pts_bbox_head(img_feats=pts_bev_feat)
+        # loss_inputs = [voxel_semantics, mask_camera, outs]
+        loss_inputs = [outs,voxel_semantics,mask_camera]
         losses = self.pts_bbox_head.loss(*loss_inputs)
 
         return losses
@@ -234,84 +225,20 @@ class OPUS_PT(MVXTwoStageDetector):
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
         
-        pts_feats=pts_feats[0].permute(0,1,4,3,2)
+        pts_bev_feat=pts_feats[0]
 
-        outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
-                                  img_metas=img_metas, points=points)
-        
-        torch.cuda.empty_cache()
-        return self.pts_bbox_head.get_occ(outs, img_metas[0], rescale=rescale)
+        outs = self.pts_bbox_head(img_feats=pts_bev_feat)
+        return self.pts_bbox_head.get_occ(outs, img_metas[0])
 
     def simple_test_online(self, img_metas, img=None, points=None, rescale=False):
         self.fp16_enabled = False
         assert len(img_metas) == 1  # batch_size = 1
 
-        B, N, C, H, W = img.shape
-        img = img.reshape(B, N//6, 6, C, H, W)
-
-        img_filenames = img_metas[0]['filename']
-        num_frames = len(img_filenames) // 6
-        # assert num_frames == img.shape[1]
-
-        img_shape = (H, W, C)
-        img_metas[0]['img_shape'] = [img_shape for _ in range(len(img_filenames))]
-        img_metas[0]['ori_shape'] = [img_shape for _ in range(len(img_filenames))]
-        img_metas[0]['pad_shape'] = [img_shape for _ in range(len(img_filenames))]
-
-        img_feats_list, img_metas_list = [], []
-
-        # extract feature frame by frame
-        for i in range(num_frames):
-            img_indices = list(np.arange(i * 6, (i + 1) * 6))
-
-            img_metas_curr = [{}]
-            for k in img_metas[0].keys():
-                item = img_metas[0][k]
-                if isinstance(item, list) and (len(item) == 6 * num_frames):
-                    img_metas_curr[0][k] = [item[j] for j in img_indices]
-                else:
-                    img_metas_curr[0][k] = item
-
-            if img_filenames[img_indices[0]] in self.memory:
-                # found in memory
-                img_feats_curr = self.memory[img_filenames[img_indices[0]]]
-            else:
-                # extract feature and put into memory
-                img_feats_curr = self.extract_img_feat(img[:, i], img_metas_curr)
-                self.memory[img_filenames[img_indices[0]]] = img_feats_curr
-                self.queue.put(img_filenames[img_indices[0]])
-                while self.queue.qsize() >= 16:  # avoid OOM
-                    pop_key = self.queue.get()
-                    self.memory.pop(pop_key)
-
-            img_feats_list.append(img_feats_curr)
-            img_metas_list.append(img_metas_curr)
-
-        # reorganize
-        feat_levels = len(img_feats_list[0])
-        img_feats_reorganized = []
-        for j in range(feat_levels):
-            feat_l = torch.cat([img_feats_list[i][j] for i in range(len(img_feats_list))], dim=0)
-            feat_l = feat_l.flatten(0, 1)[None, ...]
-            img_feats_reorganized.append(feat_l)
-
-        img_metas_reorganized = img_metas_list[0]
-        for i in range(1, len(img_metas_list)):
-            for k, v in img_metas_list[i][0].items():
-                if isinstance(v, list):
-                    img_metas_reorganized[0][k].extend(v)
-
-        img_feats = img_feats_reorganized
-        img_metas = img_metas_reorganized
-        img_feats = cast_tensor_type(img_feats, torch.half, torch.float32)
-
         # extract points features
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
 
-        pts_feats=pts_feats[0].permute(0,1,4,3,2)
-
+        pts_bev_feat=pts_feats[0]
         # run occupancy predictor
-        outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
-                                  img_metas=img_metas, points=points)
-        return self.pts_bbox_head.get_occ(outs, img_metas[0], rescale=rescale)
+        outs = self.pts_bbox_head(img_feats=pts_bev_feat)
+        return self.pts_bbox_head.get_occ(outs, img_metas[0])
