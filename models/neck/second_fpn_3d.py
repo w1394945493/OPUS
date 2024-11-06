@@ -8,11 +8,13 @@ from torch import nn as nn
 from mmdet3d.models.builder import NECKS
 from mmdet3d.ops.spconv import IS_SPCONV2_AVAILABLE
 if IS_SPCONV2_AVAILABLE:
-    from spconv.pytorch import SparseConvTensor, SparseSequential
+    from spconv.pytorch import (SparseConvTensor, SparseSequential,
+                                SparseConvTranspose3d)
 else:
-    from mmcv.ops import SparseConvTensor, SparseSequential
+    from mmcv.ops import (SparseConvTensor, SparseSequential,
+                          SparseConvTranspose3d)
 
-import spconv.pytorch as spconv
+# import spconv.pytorch as spconv
 import torch.nn.functional as F
 
 @NECKS.register_module()
@@ -53,7 +55,8 @@ class SECONDFPN_3d(BaseModule):
             stride = upsample_strides[i]
             if stride > 1 or (stride == 1 and not use_conv_for_no_stride):
                 # 使用稀疏反卷积进行上采样
-                upsample_layer = spconv.SparseConvTranspose3d(
+                # upsample_layer = spconv.SparseConvTranspose3d(
+                upsample_layer = SparseConvTranspose3d(
                 in_channels=in_channels[i],
                 out_channels=out_channel,
                 kernel_size=stride,  # 可以与 stride 相同，决定上采样比例
@@ -147,7 +150,8 @@ class SECONDFPN_3dv2(BaseModule):
             stride = upsample_strides[i]
             if stride > 1 or (stride == 1 and not use_conv_for_no_stride):
                 # 使用稀疏反卷积进行上采样
-                upsample_layer = spconv.SparseConvTranspose3d(
+                # upsample_layer = spconv.SparseConvTranspose3d(
+                upsample_layer = SparseConvTranspose3d(
                 in_channels=in_channels[i],
                 out_channels=out_channel,
                 kernel_size=stride,  # 可以与 stride 相同，决定上采样比例
@@ -250,7 +254,8 @@ class SECONDFPN_3dv3(BaseModule):
             stride = upsample_strides[i]
             if stride > 1 or (stride == 1 and not use_conv_for_no_stride):
                 # 使用稀疏反卷积进行上采样
-                upsample_layer = spconv.SparseConvTranspose3d(
+                # upsample_layer = spconv.SparseConvTranspose3d(
+                upsample_layer = SparseConvTranspose3d(
                 in_channels=in_channels[i],
                 out_channels=out_channel,
                 kernel_size=stride,  # 可以与 stride 相同，决定上采样比例

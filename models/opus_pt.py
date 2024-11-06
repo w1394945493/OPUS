@@ -8,7 +8,8 @@ from mmcv.runner.fp16_utils import cast_tensor_type
 from mmdet.models import DETECTORS
 from mmdet3d.core import bbox3d2result
 from mmdet3d.models.detectors.mvx_two_stage import MVXTwoStageDetector
-from .utils import GridMask, pad_multiple, GpuPhotoMetricDistortion
+from .utils import (GridMask, pad_multiple, GpuPhotoMetricDistortion,
+                    disable_all_fp16_function)
 
 
 @DETECTORS.register_module()
@@ -46,6 +47,7 @@ class OPUS_PT(MVXTwoStageDetector):
 
     @auto_fp16(apply_to=('img'), out_fp32=True)
     def extract_img_feat_(self, img):
+        # import pdb; pdb.set_trace()
         if self.use_grid_mask:
             img = self.grid_mask(img)
 
@@ -142,7 +144,6 @@ class OPUS_PT(MVXTwoStageDetector):
             x = self.pts_neck(x)
         return x
 
-    @force_fp32(apply_to=('img', 'points'))
     def forward(self, return_loss=True, **kwargs):
         """Calls either forward_train or forward_test depending on whether
         return_loss=True.
@@ -211,6 +212,7 @@ class OPUS_PT(MVXTwoStageDetector):
 
         return losses
 
+    @disable_all_fp16_function
     def forward_test(self, img_metas, img=None, points=None, **kwargs):
         for var, name in [(img_metas, 'img_metas')]:
             if not isinstance(var, list):
@@ -228,7 +230,6 @@ class OPUS_PT(MVXTwoStageDetector):
             return self.simple_test_offline(img_metas, img, points, rescale)
 
     def simple_test_offline(self, img_metas, img=None, points=None, rescale=False):
-        self.fp16_enabled = False
         img_feats = None if not self.with_img_backbone else \
             self.extract_img_feat(img, img_metas)
         pts_feats = None if not self.with_pts_backbone else \
@@ -243,7 +244,6 @@ class OPUS_PT(MVXTwoStageDetector):
         return self.pts_bbox_head.get_occ(outs, img_metas[0], rescale=rescale)
 
     def simple_test_online(self, img_metas, img=None, points=None, rescale=False):
-        self.fp16_enabled = False
         assert len(img_metas) == 1  # batch_size = 1
 
         B, N, C, H, W = img.shape

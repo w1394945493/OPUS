@@ -116,10 +116,6 @@ class OPUS_PT_Head(BaseModule):
                 img_metas=None):
         init_points, query_feat = self.get_init_position(points, mlvl_feats,
                                                          pts_feats, img_metas)
-        # ## hardcode
-        # self.voxel_num=torch.tensor([200, 200, 16]).cuda()
-        # self.voxel_size=torch.tensor([0.4,0.4,0.4]).cuda()
-
         cls_scores, refine_pts = self.transformer(
             init_points,
             query_feat,

@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 from numpy import random
 from mmcv.runner import force_fp32
+import functools
 
 
 def sparse2dense(indices, value, dense_shape, empty_value=0):
@@ -499,3 +500,30 @@ class Version:
         self.name = 'v1.0.0'
 
 VERSION = Version()
+
+
+def disable_all_fp16_function(old_func):
+    # Forcely disable all fp16 functions (auto_fp16, force_fp32)
+    # in submodule.
+    # spconv don't support fp16 in evalution
+    # https://github.com/traveller59/spconv/issues/563
+
+    @functools.wraps(old_func)
+    def new_func(*args, **kwargs):
+        fp16_status = dict()
+        for name, module in args[0].named_modules():
+            fp16_status[name] = module.fp16_enabled if \
+                hasattr(module, 'fp16_enabled') else None
+            module.fp16_enabled = False
+
+        results = old_func(*args, **kwargs)
+
+        for name, module in args[0].named_modules():
+            if fp16_status[name] is None:
+                delattr(module, 'fp16_enabled')
+            else:
+                module.fp16_enabled = fp16_status[name]
+
+        return results
+    
+    return new_func
