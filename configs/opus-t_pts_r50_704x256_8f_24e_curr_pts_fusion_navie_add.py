@@ -119,7 +119,6 @@ model = dict(
         in_channels=embed_dims,
         num_query=num_query,
         pc_range=point_cloud_range,
-        pc_voxel_size=pc_voxel_size,
         voxel_size=voxel_size,
         init_pos_lidar='curr',
         transformer=dict(

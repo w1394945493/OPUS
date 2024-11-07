@@ -201,9 +201,11 @@ class OPUS_PT(MVXTwoStageDetector):
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
         
-        ## pts_feats: (B, C, Dz, Dy, Dx)->(B,C,Dx,Dy,Dz)
-        pts_feats=pts_feats[0].permute(0,1,4,3,2)
- 
+        ## hardcode
+        # ensure the shape is: dz,dy,dx
+        assert(tuple(pts_feats.shape[-3:])==(16,200,200)),\
+            'the shape of pts feat is not correct in training'
+
         # forward occ head
         outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
                                   img_metas=img_metas, points=points)
@@ -235,7 +237,10 @@ class OPUS_PT(MVXTwoStageDetector):
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
         
-        pts_feats=pts_feats[0].permute(0,1,4,3,2)
+        ## hardcode
+        # ensure the shape is: dz,dy,dx
+        assert(tuple(pts_feats.shape[-3:])==(16,200,200)),\
+            'the shape of pts feat is not correct in test_offline'
 
         outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
                                   img_metas=img_metas, points=points)
@@ -309,7 +314,10 @@ class OPUS_PT(MVXTwoStageDetector):
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
 
-        pts_feats=pts_feats[0].permute(0,1,4,3,2)
+        ## hardcode
+        # ensure the shape is: dz,dy,dx
+        assert(tuple(pts_feats.shape[-3:])==(16,200,200)),\
+            'the shape of pts feat is not correct in test_oneline'
 
         # run occupancy predictor
         outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,

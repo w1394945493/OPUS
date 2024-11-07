@@ -21,7 +21,6 @@ class OPUS_PT_Head(BaseModule):
                  pc_range=[],
                  empty_label=17,
                  voxel_size=[],
-                 pc_voxel_size=[],
                  init_pos_lidar=None,
                  train_cfg=dict(),
                  test_cfg=dict(max_per_img=100),
@@ -65,13 +64,12 @@ class OPUS_PT_Head(BaseModule):
         scene_size = pc_range[3:] - pc_range[:3]
         voxel_size = torch.tensor(voxel_size)
         voxel_num = (scene_size / voxel_size).long()
-        pc_voxel_size = torch.tensor(pc_voxel_size)
+
         self.register_buffer('pc_range', pc_range)
         self.register_buffer('scene_size', scene_size)
         self.register_buffer('voxel_size', voxel_size)
         self.register_buffer('voxel_num', voxel_num)
-        self.register_buffer('pc_voxel_size', pc_voxel_size)
-
+       
         self._init_layers()
 
     def _init_layers(self):

@@ -120,7 +120,6 @@ model = dict(
         num_query=num_query,
         pc_range=point_cloud_range,
         voxel_size=voxel_size,
-        pc_voxel_size=pc_voxel_size,
         init_pos_lidar='curr',
         transformer=dict(
             type='OPUSTransformer_PT',
@@ -260,6 +259,7 @@ lr_config = dict(
     min_lr_ratio=1e-3
 )
 total_epochs = 24
+# batch_size = 1
 batch_size = 8
 
 # load pretrained weights

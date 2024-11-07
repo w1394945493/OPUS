@@ -120,7 +120,6 @@ model = dict(
         num_query=num_query,
         pc_range=point_cloud_range,
         voxel_size=voxel_size,
-        pc_voxel_size=pc_voxel_size,
         init_pos_lidar='curr',
         transformer=dict(
             type='OPUSTransformer_PT3',

@@ -236,7 +236,7 @@ class OPUSTransformerDecoderLayer_PT2(BaseModule):
     def forward(self, query_points, query_feat, mlvl_feats, pts_feats,occ2img, img_metas):
         """
         query_points: [B, Q, 3] [x, y, z]
-        pts_feats:[B,C,dx,dy,dz]
+        pts_feats:[B,C,dz,dy,dx]
         """
         query_pos = self.position_encoder(query_points.flatten(2, 3))
         query_feat = query_feat + query_pos

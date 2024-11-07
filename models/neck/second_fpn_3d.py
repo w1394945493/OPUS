@@ -208,10 +208,14 @@ class SECONDFPN_3dv3(BaseModule):
     """FPN used in SECOND/PointPillars/PartA2/MVXNet.
 
     want to not use sparseConvTranspose3d, cause it is said to be slow
-    use F.upsample or F.interpolate, this may faster or slower
+    use F.upsample or F.interpolate, this may faster
 
     built upon SECONDFPN_3dv2, but project the feature space to 256
 
+    change: 1106 
+    and return the feature map in tensor, not list
+    cause if return in a list, should change the input to tensor in train/test_offline/test_online
+    it will be too troublesome
 
     Args:
         in_channels (list[int]): Input channels of multi-scale feature maps.
@@ -304,10 +308,9 @@ class SECONDFPN_3dv3(BaseModule):
         out.append(F.interpolate(x[-1].dense(),scale_factor=2,mode='trilinear',align_corners=False))
         out = torch.cat(out, dim=1)
 
-        # B,Dz,Dy,Dx,C
+        # B,C,Dz,Dy,Dx -> B,Dz,Dy,Dx,C
         out=out.permute(0,2,3,4,1)
         out=self.proj_feat(out)
         out=out.permute(0,4,1,2,3) # B,C,Dz,Dy,Dx
 
-
-        return [out]
+        return out
