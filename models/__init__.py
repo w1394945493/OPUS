@@ -21,9 +21,10 @@ from .opus_transformer_pt2 import OPUSTransformer_PT2
 from .opus_transformer_pt3 import OPUSTransformer_PT3
 from .opus_transformer_pt4 import OPUSTransformer_PT4
 
+from .opus_pt_head_loss_occ import OPUS_PT_Head_loss_occupancy
 
 __all__ = ['OPUS', 'OPUSHead', 'OPUSTransformer', 'OPUS_PT',
-           'OPUS_PT_Head',
+           'OPUS_PT_Head', 'OPUS_PT_Head_loss_occupancy',
            'PT','BEVOCCHead2D','BEVOCCHead3Dv1','BEVOCCHead3Dv2',
            'OPUSTransformer_PT','OPUSTransformer_PT2','OPUSTransformer_PT3',
            'OPUSTransformer_PT4',]
