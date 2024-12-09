@@ -1,3 +1,9 @@
+'''
+    Edit by lzj at 1201
+    Adding feature:
+        load partial ckpt
+'''
+
 import os
 import time
 import utils
@@ -18,6 +24,8 @@ from mmdet3d.datasets import build_dataset
 from mmdet3d.models import build_model
 from loaders.builder import build_dataloader
 from models.core.hook.ema import MEGVIIEMAHook
+
+from load_paritial_ckpt import load_partial_ckpt
 
 
 def main():
@@ -166,11 +174,10 @@ def main():
 
     elif cfgs.load_from is not None:
         logging.info('Loading checkpoint from %s' % cfgs.load_from)
-        if cfgs.revise_keys is not None:
-            load_checkpoint(
-                model, cfgs.load_from, map_location='cpu',
-                revise_keys=cfgs.revise_keys
-            )
+        if cfgs.prefix_keys_list is not None:
+            load_partial_ckpt(
+                model=model, filename=cfgs.load_from, 
+                prefix_list=cfgs.prefix_keys_list,map_location='cpu')
         else:
             load_checkpoint(
                 model, cfgs.load_from, map_location='cpu',
@@ -181,3 +188,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
