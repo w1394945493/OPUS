@@ -23,7 +23,7 @@ from mmdet.core import DistEvalHook, EvalHook
 from mmdet3d.datasets import build_dataset
 from mmdet3d.models import build_model
 from loaders.builder import build_dataloader
-from models.core.hook.ema import MEGVIIEMAHook
+from code.OPUS_TPAMI.models.core.hook.ema import MEGVIIEMAHook
 
 from load_paritial_ckpt import load_partial_ckpt
 

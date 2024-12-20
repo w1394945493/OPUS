@@ -130,7 +130,7 @@ def main():
         model = MMDistributedDataParallel(model, [local_rank], broadcast_buffers=False)
     else:
         model = MMDataParallel(model, [0])
-
+    
     logging.info('Creating optimizer: %s' % cfgs.optimizer.type)
     optimizer = build_optimizer(model, cfgs.optimizer)
 

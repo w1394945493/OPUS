@@ -30,10 +30,13 @@ from .opus_pt_2D import OPUS_PT_2D
 from .opus_pt_2D_v2 import OPUS_PT_2D_v2
 from .opus_pt_2D_v3 import OPUS_PT_2D_v3
 
+from .opus_pt_2D_v2_ema import OPUS_PT_2D_v2_EMA
+
 __all__ = ['OPUS', 'OPUSHead', 'OPUSTransformer', 'OPUS_PT',
            'OPUS_PT_Head', 'OPUS_PT_Head_loss_occupancy',
            'PT','BEVOCCHead2D','BEVOCCHead3Dv1','BEVOCCHead3Dv2',
            'OPUSTransformer_PT','OPUSTransformer_PT2','OPUSTransformer_PT3',
            'OPUSTransformer_PT4','OPUSTransformer_PT_GroupMixing',
            'OPUSTransformer_PT_GroupMixing2','OPUS_PT_2D','OPUS_PT_2D_v2',
-           'OPUSTransformer_PT_GroupMixing2_2D','OPUS_PT_2D_v3']
+           'OPUSTransformer_PT_GroupMixing2_2D','OPUS_PT_2D_v3',
+           'OPUS_PT_2D_v2_EMA']

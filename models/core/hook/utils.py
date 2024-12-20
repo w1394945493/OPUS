@@ -10,3 +10,4 @@ def is_parallel(model):
         nn.parallel.DistributedDataParallel,
     )
     return isinstance(model, parallel_type)
+

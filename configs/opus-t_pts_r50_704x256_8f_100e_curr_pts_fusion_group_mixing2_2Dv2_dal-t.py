@@ -1,11 +1,10 @@
 '''
     navie version:
-        the neck:upsample
-        sample pattern:sampled voxel feat in a interpolation way and average directly
-        fusion way: cat and proj
-        lidar feat: group mixing
+        lidar branch: BEV
+        sample way: sample feature in BEV
+        fusion way: GroupMixing2
 
-        hook: EMA
+        load from dal-t lidar branch and cascade img branch
 '''
 
 dataset_type = 'NuScenesOccDataset'
@@ -36,7 +35,7 @@ occ_names = [
 # If point cloud range is changed, the models should also change their point
 # cloud range accordingly
 point_cloud_range = [-40.0, -40.0, -1.0, 40.0, 40.0, 5.4]
-pc_voxel_size = [0.05, 0.05, 0.05]
+pc_voxel_size = [0.05, 0.05, 0.16]
 voxel_size = [0.4, 0.4, 0.4]
 
 # arch config
@@ -72,37 +71,36 @@ pts_voxel_layer=dict(max_num_points=10, voxel_size=pc_voxel_size,
                      max_voxels=(90000, 120000), point_cloud_range=point_cloud_range)
 pts_voxel_encoder=dict(type='HardSimpleVFE', num_features=5)
 pts_middle_encoder=dict(
-    type='SparseEncoder8x',
+    type='SparseEncoder',
     in_channels=5,
-    sparse_shape=[128, 1600, 1600],
+    sparse_shape=[41, 1600, 1600],
     output_channels=128,
     order=('conv', 'norm', 'act'),
     encoder_channels=((16, 16, 32), 
                       (32, 32, 64), 
                       (64, 64, 128), 
                       (128,128)),
-    encoder_paddings=((0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0)),
+    encoder_paddings=((0, 0, 1), (0, 0, 1), (0, 0, [0, 1, 1]), (0, 0)),
     block_type='basicblock')
 pts_backbone=dict(
-    type='SECOND_3d',
-    in_channels=128,
-    sparse_conv_cnt=0,
+    type='SECOND',
+    in_channels=256,
     out_channels=[128, 256],
     layer_nums=[5, 5],
     layer_strides=[1, 2],
-    norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
-    conv_cfg=None)
+    norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
+    conv_cfg=dict(type='Conv2d', bias=False))
 pts_neck=dict(
-    type='SECONDFPN_3dv3',
-    in_channels=[128],
-    out_channels=[256], 
+    type='SECONDFPN',
+    in_channels=[128, 256],
+    out_channels=[256, 256],
     upsample_strides=[1, 2],
-    norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
-    upsample_cfg=dict(type='SparseConvTranspose3d'),
+    norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
+    upsample_cfg=dict(type='deconv', bias=False),
     use_conv_for_no_stride=True)
 
 model = dict(
-    type='OPUS_PT',
+    type='OPUS_PT_2D_v2',
     use_grid_mask=False,
     data_aug=dict(
         img_color_aug=True,  # Move some augmentations to GPU
@@ -125,7 +123,7 @@ model = dict(
         voxel_size=voxel_size,
         init_pos_lidar='curr',
         transformer=dict(
-            type='OPUSTransformer_PT_GroupMixing2',
+            type='OPUSTransformer_PT_GroupMixing2_2D',
             embed_dims=embed_dims,
             num_frames=num_frames,
             num_points=num_points,
@@ -205,8 +203,8 @@ test_pipeline = [
 ]
 
 data = dict(
-    workers_per_gpu=1,
-    # workers_per_gpu=4,
+    # workers_per_gpu=1,
+    workers_per_gpu=4,
     train=dict(
         type=dataset_type,
         data_root=dataset_root,
@@ -261,13 +259,13 @@ lr_config = dict(
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3
 )
-total_epochs = 24
-batch_size = 1
-# batch_size = 8
+total_epochs = 100
+# batch_size = 1
+batch_size = 8
 
 # load pretrained weights
-load_from = 'pretrain/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth'
-revise_keys = [('backbone', 'img_backbone')]
+load_from = 'ckpts/dal_t2.pth'
+revise_keys = []
 
 # resume the last training
 resume_from = None
@@ -283,14 +281,6 @@ log_config = dict(
         dict(type='MyTensorboardLoggerHook', interval=500, reset_flag=True)
     ]
 )
-
-# custom_hooks = [
-#     dict(type='MEGVIIEMAHook',init_updates=10560,priority='NORMAL',ema_model_cfg=model),
-#     ]
-
-custom_hooks = [
-    dict(type='MEGVIIEMAHook',init_updates=10560,priority='NORMAL'),
-    ]
 
 # evaluation
 eval_config = dict(interval=total_epochs)
