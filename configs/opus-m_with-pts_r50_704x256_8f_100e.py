@@ -68,7 +68,7 @@ img_norm_cfg = dict(
     std=[58.395, 57.120, 57.375],
     to_rgb=True)
 
-pts_voxel_layer=dict(max_num_points=10, voxel_size=pc_voxel_size,
+pts_voxel_layer=dict(max_num_points=10, voxel_size=pc_voxel_size, deterministic=False,
                      max_voxels=(90000, 120000), point_cloud_range=point_cloud_range)
 pts_voxel_encoder=dict(type='HardSimpleVFE', num_features=5)
 pts_middle_encoder=dict(
@@ -124,7 +124,7 @@ model = dict(
         voxel_size=voxel_size,
         init_pos_lidar='curr',
         transformer=dict(
-            type='OPUSTransformer_PT_GroupMixing2_2D',
+            type='OPUSTransformer_PT',
             embed_dims=embed_dims,
             num_frames=num_frames,
             num_points=num_points,

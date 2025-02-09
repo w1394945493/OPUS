@@ -5,7 +5,6 @@
         fusion way: GroupMixing2
 
         load from dal-t lidar branch and cascade img branch
-        query_num:4800
 '''
 
 dataset_type = 'NuScenesOccDataset'
@@ -42,11 +41,11 @@ voxel_size = [0.4, 0.4, 0.4]
 # arch config
 embed_dims = 256
 num_layers = 6
-num_query = 4800
+num_query = 1200
 num_frames = 8
 num_levels = 4
 num_points = 2
-num_refines = [1, 2, 4, 8, 16, 16]
+num_refines = [1, 4, 16, 32, 64, 128]
 
 img_backbone = dict(
     type='ResNet',
@@ -68,7 +67,7 @@ img_norm_cfg = dict(
     std=[58.395, 57.120, 57.375],
     to_rgb=True)
 
-pts_voxel_layer=dict(max_num_points=10, voxel_size=pc_voxel_size,
+pts_voxel_layer=dict(max_num_points=10, voxel_size=pc_voxel_size, deterministic=False,
                      max_voxels=(90000, 120000), point_cloud_range=point_cloud_range)
 pts_voxel_encoder=dict(type='HardSimpleVFE', num_features=5)
 pts_middle_encoder=dict(
@@ -124,7 +123,7 @@ model = dict(
         voxel_size=voxel_size,
         init_pos_lidar='curr',
         transformer=dict(
-            type='OPUSTransformer_PT_GroupMixing2_2D',
+            type='OPUSTransformer_PT',
             embed_dims=embed_dims,
             num_frames=num_frames,
             num_points=num_points,

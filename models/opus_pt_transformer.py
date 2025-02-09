@@ -23,7 +23,7 @@ from .csrc.wrapper import MSMV_CUDA
 '''
 
 @TRANSFORMER.register_module()
-class OPUSTransformer_PT_GroupMixing2_2D(BaseModule):
+class OPUSTransformer_PT(BaseModule):
     def __init__(self,
                  embed_dims,
                  num_frames=8,
@@ -182,14 +182,14 @@ class OPUSTransformerDecoderLayer_PT(BaseModule):
             nn.ReLU(inplace=True),
         )
 
-        self.self_attn = OPUSSelfAttention(
+        self.self_attn = OPUSSelfAttention_PT(
             embed_dims, num_heads=8, dropout=0.1, pc_range=pc_range)
         self.sampling = OPUSSampling_PT(embed_dims, num_frames=num_frames, num_views=num_views,
                                      num_groups=num_groups, num_points=num_points, 
                                      num_levels=num_levels, pc_range=pc_range)
         
-        self.img_pts_mixing=AdaptiveMixing(in_dim=embed_dims, in_points=num_points * (num_frames+1),
-                                           n_groups=num_groups)
+        self.img_pts_mixing=AdaptiveMixing_PT(
+            in_dim=embed_dims, in_points=num_points * (num_frames+1), n_groups=num_groups)
 
         self.ffn = FFN(embed_dims, feedforward_channels=512, ffn_drop=0.1)
 
@@ -280,7 +280,7 @@ class OPUSTransformerDecoderLayer_PT(BaseModule):
         return query_feat, cls_score, refine_pt
 
 
-class OPUSSelfAttention(BaseModule):
+class OPUSSelfAttention_PT(BaseModule):
     """Scale-adaptive Self Attention"""
     def __init__(self, 
                  embed_dims=256,
@@ -421,7 +421,7 @@ class OPUSSampling_PT(BaseModule):
                                       occ2img, img_metas)
 
 
-class AdaptiveMixing(nn.Module):
+class AdaptiveMixing_PT(nn.Module):
     """Adaptive Mixing"""
     def __init__(self, in_dim, in_points, n_groups=1, query_dim=None, out_dim=None, out_points=None):
         super().__init__()
