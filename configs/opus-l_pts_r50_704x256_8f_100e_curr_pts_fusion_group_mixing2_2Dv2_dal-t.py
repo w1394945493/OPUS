@@ -101,7 +101,7 @@ pts_neck=dict(
     use_conv_for_no_stride=True)
 
 model = dict(
-    type='OPUS_PT_2D_v2',
+    type='OPUS_PT',
     use_grid_mask=False,
     data_aug=dict(
         img_color_aug=True,  # Move some augmentations to GPU
@@ -265,7 +265,7 @@ total_epochs = 100
 batch_size = 8
 
 # load pretrained weights
-load_from = 'ckpts/dal_t2.pth'
+load_from = 'pretrain/merged_ckpt.pth'
 revise_keys = []
 
 # resume the last training

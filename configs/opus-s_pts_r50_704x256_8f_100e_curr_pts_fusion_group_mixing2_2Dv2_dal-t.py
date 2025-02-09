@@ -1,9 +1,10 @@
 '''
     navie version:
-        the neck:upsample
-        sample pattern:sampled voxel feat in a interpolation way and average directly
-        fusion way: cat and proj
-        lidar feat: group mixing
+        lidar branch: BEV
+        sample way: sample feature in BEV
+        fusion way: GroupMixing2
+
+        load from dal-t lidar branch and cascade img branch
 '''
 
 dataset_type = 'NuScenesOccDataset'
@@ -34,16 +35,16 @@ occ_names = [
 # If point cloud range is changed, the models should also change their point
 # cloud range accordingly
 point_cloud_range = [-40.0, -40.0, -1.0, 40.0, 40.0, 5.4]
-pc_voxel_size = [0.05, 0.05, 0.05]
+pc_voxel_size = [0.05, 0.05, 0.16]
 voxel_size = [0.4, 0.4, 0.4]
 
 # arch config
 embed_dims = 256
 num_layers = 6
-num_query = 600
+num_query = 1200
 num_frames = 8
 num_levels = 4
-num_points = 4
+num_points = 2
 num_refines = [1, 4, 16, 32, 64, 128]
 
 img_backbone = dict(
@@ -70,33 +71,32 @@ pts_voxel_layer=dict(max_num_points=10, voxel_size=pc_voxel_size,
                      max_voxels=(90000, 120000), point_cloud_range=point_cloud_range)
 pts_voxel_encoder=dict(type='HardSimpleVFE', num_features=5)
 pts_middle_encoder=dict(
-    type='SparseEncoder8x',
+    type='SparseEncoder',
     in_channels=5,
-    sparse_shape=[128, 1600, 1600],
+    sparse_shape=[41, 1600, 1600],
     output_channels=128,
     order=('conv', 'norm', 'act'),
     encoder_channels=((16, 16, 32), 
                       (32, 32, 64), 
                       (64, 64, 128), 
                       (128,128)),
-    encoder_paddings=((0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0)),
+    encoder_paddings=((0, 0, 1), (0, 0, 1), (0, 0, [0, 1, 1]), (0, 0)),
     block_type='basicblock')
 pts_backbone=dict(
-    type='SECOND_3d',
-    in_channels=128,
-    sparse_conv_cnt=0,
+    type='SECOND',
+    in_channels=256,
     out_channels=[128, 256],
     layer_nums=[5, 5],
     layer_strides=[1, 2],
-    norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
-    conv_cfg=None)
+    norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
+    conv_cfg=dict(type='Conv2d', bias=False))
 pts_neck=dict(
-    type='SECONDFPN_3dv3',
-    in_channels=[128],
-    out_channels=[256], 
+    type='SECONDFPN',
+    in_channels=[128, 256],
+    out_channels=[256, 256],
     upsample_strides=[1, 2],
-    norm_cfg=dict(type='BN1d', eps=1e-3, momentum=0.01),
-    upsample_cfg=dict(type='SparseConvTranspose3d'),
+    norm_cfg=dict(type='BN', eps=1e-3, momentum=0.01),
+    upsample_cfg=dict(type='deconv', bias=False),
     use_conv_for_no_stride=True)
 
 model = dict(
@@ -123,7 +123,7 @@ model = dict(
         voxel_size=voxel_size,
         init_pos_lidar='curr',
         transformer=dict(
-            type='OPUSTransformer_PT_GroupMixing',
+            type='OPUSTransformer_PT_GroupMixing2_2D',
             embed_dims=embed_dims,
             num_frames=num_frames,
             num_points=num_points,
@@ -259,13 +259,13 @@ lr_config = dict(
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3
 )
-total_epochs = 24
+total_epochs = 100
 # batch_size = 1
 batch_size = 8
 
 # load pretrained weights
-load_from = 'ckpts/Sparse_bev_r50_nuimg_704x256.pth'
-prefix_keys_list = ['img_backbone']
+load_from = 'pretrain/merged_ckpt.pth'
+revise_keys = []
 
 # resume the last training
 resume_from = None

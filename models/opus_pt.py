@@ -10,10 +10,18 @@ from mmdet3d.core import bbox3d2result
 from mmdet3d.models.detectors.mvx_two_stage import MVXTwoStageDetector
 from .utils import (GridMask, pad_multiple, GpuPhotoMetricDistortion,
                     disable_all_fp16_function)
+from mmcv.cnn import ConvModule
 
 
 @DETECTORS.register_module()
 class OPUS_PT(MVXTwoStageDetector):
+    '''
+        specifically for 2D SECOND
+
+        Adding:
+            2D feature
+
+    '''
     def __init__(self,
                  use_grid_mask=True,
                  data_aug=None,
@@ -31,7 +39,10 @@ class OPUS_PT(MVXTwoStageDetector):
                  img_rpn_head=None,
                  train_cfg=None,
                  test_cfg=None,
-                 pretrained=None):
+                 pretrained=None,
+                 second_out_dim=512,
+                 pts_feat_dim=256,
+                 ):
         super().__init__(pts_voxel_layer, pts_voxel_encoder, pts_middle_encoder,
                          pts_fusion_layer, img_backbone, pts_backbone, img_neck,
                          pts_neck, pts_bbox_head, img_roi_head, img_rpn_head,
@@ -44,6 +55,18 @@ class OPUS_PT(MVXTwoStageDetector):
 
         self.memory = {}
         self.queue = queue.Queue()
+
+        self.final_conv = ConvModule(
+            second_out_dim,
+            pts_feat_dim,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            bias=True,
+            conv_cfg=dict(type='Conv2d')
+        )
+
+        self.pts_feat_dim=pts_feat_dim
 
     @auto_fp16(apply_to=('img'), out_fp32=True)
     def extract_img_feat_(self, img):
@@ -159,6 +182,13 @@ class OPUS_PT(MVXTwoStageDetector):
         else:
             return self.forward_test(**kwargs)
 
+    def pts_feat_proj(self,pts_feat):
+
+        # (B, C, Dy, Dx) --> (B, C, Dy, Dx)
+        pts_feat=self.final_conv(pts_feat)
+
+        return pts_feat
+        
     def forward_train(self,
                       points=None,
                       img_metas=None,
@@ -201,9 +231,13 @@ class OPUS_PT(MVXTwoStageDetector):
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
         
+        # B, C, Dy, Dx
+        pts_feats = pts_feats[0]
+        pts_feats=self.pts_feat_proj(pts_feats)
+        
         ## hardcode
-        # ensure the shape is: dz,dy,dx
-        assert(tuple(pts_feats.shape[-3:])==(16,200,200)),\
+        # ensure the shape is: dy,dx
+        assert(tuple(pts_feats.shape[-2:])==(200,200)),\
             'the shape of pts feat is not correct in training'
 
         # forward occ head
@@ -237,10 +271,14 @@ class OPUS_PT(MVXTwoStageDetector):
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
         
+        # B, C, Dy, Dx
+        pts_feats = pts_feats[0]
+        pts_feats=self.pts_feat_proj(pts_feats)
+        
         ## hardcode
-        # ensure the shape is: dz,dy,dx
-        assert(tuple(pts_feats.shape[-3:])==(16,200,200)),\
-            'the shape of pts feat is not correct in test_offline'
+        # ensure the shape is: dy,dx
+        assert(tuple(pts_feats.shape[-2:])==(200,200)),\
+            'the shape of pts feat is not correct in training'
 
         outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
                                   img_metas=img_metas, points=points)
@@ -313,10 +351,14 @@ class OPUS_PT(MVXTwoStageDetector):
         # extract points features
         pts_feats = None if not self.with_pts_backbone else \
             self.extract_pts_feat(points)
+        
+        # B, C, Dy, Dx
+        pts_feats = pts_feats[0]
+        pts_feats=self.pts_feat_proj(pts_feats)
 
         ## hardcode
         # ensure the shape is: dz,dy,dx
-        assert(tuple(pts_feats.shape[-3:])==(16,200,200)),\
+        assert(tuple(pts_feats.shape[-2:])==(200,200)),\
             'the shape of pts feat is not correct in test_oneline'
 
         # run occupancy predictor
