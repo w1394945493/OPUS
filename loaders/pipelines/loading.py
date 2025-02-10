@@ -77,10 +77,12 @@ class LoadMultiViewImageFromMultiSweeps:
                  color_type='color',
                  test_mode=False,
                  train_interval=[4, 8],
-                 test_interval=6):
+                 test_interval=6,
+                 force_offline=False):
         self.sweeps_num = sweeps_num
         self.color_type = color_type
         self.test_mode = test_mode
+        self.force_offline = force_offline
 
         self.train_interval = train_interval
         self.test_interval = test_interval
@@ -185,7 +187,7 @@ class LoadMultiViewImageFromMultiSweeps:
             return results
 
         world_size = get_dist_info()[1]
-        if world_size == 1 and self.test_mode:
+        if world_size == 1 and self.test_mode and (not self.force_offline):
             return self.load_online(results)
         else:
             return self.load_offline(results)

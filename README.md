@@ -1,6 +1,6 @@
 <div align="center">
 
-# OPUS: Occupancy Prediction Using a Sparse Set
+# OPUS: Occupancy Prediction Using a Sparse Set (NeurIPS 2024)
 </div>
 
 ![demo](demos/teaser.png)
@@ -14,11 +14,13 @@
 > [Qibin Hou#](https://houqb.github.io/),
 > [Ming-Ming Cheng](https://mmcheng.net/cmm/) \
 > (* Equal contribition, # Corresponding author)
-> - [Paper in arXiv](https://arxiv.org/pdf/2409.09350)
+> - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233)
 
 ## News
 
-- [2024/9/17]: We release an initial version of OPUS. It achieves promising performance of 41.2 RayIoU and 36.2 mIoU on the NuScene-Occ3D dataset.
+- [2025/01/10]: We release the visualization code.
+- [2024/09/26]: OPUS is accepeted by NeurIPS 2024 :rocket: :rocket: :rocket: .
+- [2024/09/17]: We release an initial version of OPUS. It achieves promising performance of 41.2 RayIoU and 36.2 mIoU on the NuScene-Occ3D dataset.
 
 ## Abstract
 Occupancy prediction, aiming at predicting the occupancy status within voxelized 3D environment, is quickly gaining momentum within the autonomous driving community.
@@ -161,15 +163,27 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 torchrun --nproc_per_node 8 val.py --config configs/opus-t_r50_704x256_8f_12e.py --weights path/to/checkpoints
 ```
 
+### Visualization
+
+Visualizing results
+```
+python visualize.py --config configs/opus-t_r50_704x256_8f_12e.py --weights path/to/checkpoints
+```
+
+Visualizing inputs and ground-truths
+```
+python visualize.py --config configs/opus-t_r50_704x256_8f_12e.py --weights path/to/checkpoints --vis-input --vis-gt
+```
+
 ## Bibtex
 
 If this work is helpful for your research, please consider citing the following entry.
 
 ```
-@article{wang2024opus,
+@inproceedings{wang2024opus,
   title={Opus: occupancy prediction using a sparse set},
   author={Wang, Jiabao and Liu, Zhaojiang and Meng, Qiang and Yan, Liujiang and Wang, Ke and Yang, Jie and Liu, Wei and Hou, Qibin and Cheng, Mingming}
-  journal={arXiv preprint arXiv:2409.09350},
+  booktitle={Advances in Neural Information Processing Systems},
   year={2024}
 }
 ```
