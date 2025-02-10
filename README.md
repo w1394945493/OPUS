@@ -18,9 +18,10 @@
 
 ## News
 
+- [2025/02/10]: &#x1F680;We release the fusion version of OPUS. The performance has been boosted to 51.4 mIoU and 51.8 RayIoU on the NuScene-Occ3D dataset.
 - [2025/01/10]: We release the visualization code.
-- [2024/09/26]: OPUS is accepeted by NeurIPS 2024 :rocket: :rocket: :rocket: .
-- [2024/09/17]: We release an initial version of OPUS. It achieves promising performance of 41.2 RayIoU and 36.2 mIoU on the NuScene-Occ3D dataset.
+- [2024/09/26]: &#x1F680;OPUS is accepeted by NeurIPS 2024.
+- [2024/09/17]: &#x1F680;We release an initial version of OPUS. It achieves promising performance of 41.2 RayIoU and 36.2 mIoU on the NuScene-Occ3D dataset.
 
 ## Abstract
 Occupancy prediction, aiming at predicting the occupancy status within voxelized 3D environment, is quickly gaining momentum within the autonomous driving community.
@@ -38,12 +39,23 @@ Finally, compared with current state-of-the-art methods, our lightest model achi
 
 ## Model Zoo
 
+**Image-only model**
+
 | Models                                          | Epochs |  *Q* | *P* | mIoU | RayIoU<sub>1m</sub> | RayIoU<sub>2m</sub> | RayIoU<sub>4m</sub> | RayIoU |  FPS | Link |
 |:-----------------------------------------------:|:------:|:----:|:---:|:----:|:-------------------:|:-------------------:|:-------------------:|:------:|:----:|:----:|
 | [OPUS-T](configs/opus-t_r50_704x256_8f_100e.py) |   100  | 600  | 128 | 33.2 |         31.7        |         39.2        |         44.3        |  38.4  | 22.4 | [Model](https://drive.google.com/file/d/10-dOpejD7gQMYY8aDhrWUXtAEIWO1KZr/view?usp=sharing) |
 | [OPUS-S](configs/opus-s_r50_704x256_8f_100e.py) |   100  | 1200 | 64  | 34.2 |         32.6        |         39.9        |         44.7        |  39.1  | 20.7 | [Model](https://drive.google.com/file/d/1g1mkl3ij11wUQPDRjbftXw8cLd6lkBy7/view?usp=sharing) |
 | [OPUS-M](configs/opus-m_r50_704x256_8f_100e.py) |   100  | 2400 | 32  | 35.6 |         33.7        |         41.1        |         46.0        |  40.3  | 13.4 | [Model](https://drive.google.com/file/d/1leXwavqWHP0JdkeprB5ynNH8IttHRkQk/view?usp=sharing) |
 | [OPUS-L](configs/opus-l_r50_704x256_8f_100e.py) |   100  | 4800 | 16  | 36.2 |         34.7        |         42.1        |         46.7        |  41.2  |  7.2 | [Model](https://drive.google.com/file/d/17Ga2Uk1BPsLIq1tM1qxiK8LTX-GsKP39/view?usp=sharing) |
+
+**Fusion model**
+
+| Models                                                          | Epochs |  *Q* | *P* | mIoU | RayIoU<sub>1m</sub> | RayIoU<sub>2m</sub> | RayIoU<sub>4m</sub> | RayIoU |  FPS | Link |
+|:---------------------------------------------------------------:|:------:|:----:|:---:|:----:|:-------------------:|:-------------------:|:-------------------:|:------:|:----:|:----:|
+| [OPUS-Fusion-T](configs/opus-t_with-pts_r50_704x256_8f_100e.py) |   100  | 600  | 128 | 48.7 |         45.4        |         50.3        |         53.3        |  49.7  | 10.2 | [Model]() |
+| [OPUS-Fusion-S](configs/opus-s_with-pts_r50_704x256_8f_100e.py) |   100  | 1200 | 64  | 49.6 |         45.9        |         51.0        |         54.1        |  50.4  |  9.5 | [Model]() |
+| [OPUS-Fusion-M](configs/opus-m_with-pts_r50_704x256_8f_100e.py) |   100  | 2400 | 32  | 50.5 |         46.4        |         51.2        |         54.2        |  50.6  |  6.9 | [Model]() |
+| [OPUS-Fusion-L](configs/opus-l_with-pts_r50_704x256_8f_100e.py) |   100  | 4800 | 16  | 51.4 |         47.6        |         52.4        |         55.3        |  51.8  |  3.2 | [Model]() |
 
 **note: *Q* denotes query numbers. *P* is the number of predicted points per query.**
 
@@ -61,6 +73,7 @@ conda install pytorch==1.13.1 torchvision==0.14.1 pytorch-cuda=11.6 -c pytorch -
 Install other dependencies:
 
 ```
+pip install spconv-cu118  # Change the cuda version
 pip install openmim
 mim install mmcv-full==1.6.0
 mim install mmdet==2.28.2
@@ -124,13 +137,16 @@ Note: These `*.pkl` files can also be generated with our script: `gen_sweep_info
 ### Training
 
 Download pre-trained [weights](https://download.openmmlab.com/mmdetection3d/v0.1.0_models/nuimages_semseg/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth)
-provided by mmdet3d, and put them in directory `pretrain/`:
+provided by mmdet3d, and put them in directory `pretrain/`.
+
+Download DAL-tiny pre-trained [weights]() in directory `pretrain/` and run `python gen_merged_ckpt.py` when reimplementing OPUS-Fusion:
 
 
 ```
 pretrain
-├── cascade_mask_rcnn_r101_fpn_1x_nuim_20201024_134804-45215b1e.pth
 ├── cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth
+├── dal-tiny.pth
+├── merged_ckpt.pth
 ```
 
 Train OPUS with a single GPU:
