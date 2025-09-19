@@ -7,12 +7,11 @@ from mmdet.core import multi_apply
 from mmdet.models import HEADS
 from mmdet.models.utils import build_transformer
 from mmdet.models.builder import build_loss
-from mmdet3d.ops import furthest_point_sample, gather_points
-from .bbox.utils import decode_points, encode_points
+from ..bbox.utils import decode_points
 
 
 @HEADS.register_module()
-class OPUS_PT_Head(BaseModule):
+class OPUSV1Head(BaseModule):
     def __init__(self,
                  num_classes,
                  in_channels,
@@ -21,7 +20,6 @@ class OPUS_PT_Head(BaseModule):
                  pc_range=[],
                  empty_label=17,
                  voxel_size=[],
-                 init_pos_lidar=None,
                  train_cfg=dict(),
                  test_cfg=dict(max_per_img=100),
                  loss_cls=dict(
@@ -53,72 +51,35 @@ class OPUS_PT_Head(BaseModule):
             max_voxels=self.num_query * self.num_refines[-1],
             deterministic=False
         )
-        # position initialization
-        assert init_pos_lidar in [None, 'all', 'curr'], \
-            'init_pos_lidar should be one of [None, "all", "curr"], ' \
-            f'but got {init_pos_lidar}'
-        self.init_pos_lidar = init_pos_lidar
 
         # prepare scene
         pc_range = torch.tensor(pc_range)
         scene_size = pc_range[3:] - pc_range[:3]
         voxel_size = torch.tensor(voxel_size)
         voxel_num = (scene_size / voxel_size).long()
-
         self.register_buffer('pc_range', pc_range)
         self.register_buffer('scene_size', scene_size)
         self.register_buffer('voxel_size', voxel_size)
         self.register_buffer('voxel_num', voxel_num)
-       
+
         self._init_layers()
 
     def _init_layers(self):
-        if not self.init_pos_lidar:
-            self.init_points = nn.Embedding(self.num_query, 3)
-            nn.init.uniform_(self.init_points.weight, 0, 1)
+        self.init_points = nn.Embedding(self.num_query, 3)
+        nn.init.uniform_(self.init_points.weight, 0, 1)
 
     def init_weights(self):
         self.transformer.init_weights()
-    
-    def get_init_position(self, points, mlvl_feats, pts_feats, img_metas):
+
+    def forward(self, mlvl_feats, img_metas):
         B, Q, = mlvl_feats[0].shape[0], self.num_query
-
-        if not self.init_pos_lidar:
-            init_points = self.init_points.weight[None, :, None, :].repeat(B, 1, 1, 1)
-            query_feat = init_points.new_zeros(B, Q, self.embed_dims)
-            return init_points, query_feat
-
-        with torch.no_grad():
-            assert points is not None
-            init_points = []
-            for pts in points:
-                if self.init_pos_lidar == 'curr':
-                    # Only use the current lidar points
-                    pts = pts[pts[:, -1]==0]
-
-                # random sample by furthest points sampling
-                pts = pts[..., :3].contiguous().unsqueeze(0)
-                sample_idx=furthest_point_sample(pts, self.num_query)
-                init_points.append(gather_points(
-                    pts.transpose(1,2).contiguous(), sample_idx).transpose(1,2))
-            init_points = torch.cat(init_points, dim=0).unsqueeze(2)
-            init_points = encode_points(init_points, self.pc_range)
-
+        init_points = self.init_points.weight[None, :, None, :].repeat(B, 1, 1, 1)
         query_feat = init_points.new_zeros(B, Q, self.embed_dims)
-        return init_points, query_feat
 
-    def forward(self,
-                mlvl_feats=None,
-                pts_feats=None,
-                points=None,
-                img_metas=None):
-        init_points, query_feat = self.get_init_position(points, mlvl_feats,
-                                                         pts_feats, img_metas)
         cls_scores, refine_pts = self.transformer(
             init_points,
             query_feat,
             mlvl_feats,
-            pts_feats,
             img_metas=img_metas,
         )
 
@@ -253,7 +214,7 @@ class OPUS_PT_Head(BaseModule):
 
         loss_dict = dict()
         # loss of init_points
-        if init_points is not None and not self.init_pos_lidar:
+        if init_points is not None:
             pseudo_scores = init_points.new_zeros(
                 *init_points.shape[:-1], self.num_classes)
             _, init_loss_pts = self.loss_single(
@@ -341,7 +302,7 @@ class OPUS_PT_Head(BaseModule):
 
         xx = x[:, None, None].expand(W, H, Z)
         yy = y[None, :, None].expand(W, H, Z)
-        zz = z[None, None, :].expand(W, W, Z)
+        zz = z[None, None, :].expand(W, H, Z)
         coors = torch.stack([xx, yy, zz], dim=-1) # actual space
 
         gt_points, gt_masks, gt_labels = [], [], []

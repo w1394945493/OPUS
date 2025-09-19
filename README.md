@@ -18,12 +18,14 @@
 
 ## News
 
+- [2025/09/18]: We release the pretrained models of OPUS-Fusion.
 - [2025/02/10]: &#x1F680;We release the fusion version of OPUS. The performance has been boosted to 51.4 mIoU and 51.8 RayIoU on the NuScene-Occ3D dataset.
 - [2025/01/10]: We release the visualization code.
 - [2024/09/26]: &#x1F680;OPUS is accepeted by NeurIPS 2024.
 - [2024/09/17]: &#x1F680;We release an initial version of OPUS. It achieves promising performance of 41.2 RayIoU and 36.2 mIoU on the NuScene-Occ3D dataset.
 
-## Abstract
+<details>
+<summary>Abstract</summary>
 Occupancy prediction, aiming at predicting the occupancy status within voxelized 3D environment, is quickly gaining momentum within the autonomous driving community.
 Mainstream occupancy prediction works first discretize the 3D environment into voxels, then perform classification on such dense grids. However, inspection on sample data reveals that the vast majority of voxels is unoccupied. Performing classification on these empty voxels demands suboptimal computation resource allocation, and reducing such empty voxels necessitates complex algorithm designs.
 To this end, we present a novel perspective on the occupancy prediction task: formulating it as a streamlined set prediction paradigm without the need for explicit space modeling or complex sparsification procedures.
@@ -32,32 +34,7 @@ Firstly, we employ the Chamfer distance loss to scale the set-to-set comparison 
 Subsequently, semantic classes are adaptively assigned using nearest neighbor search based on the learned locations.
 In addition, OPUS incorporates a suite of non-trivial strategies to enhance model performance, including coarse-to-fine learning, consistent point sampling, and adaptive re-weighting, etc.
 Finally, compared with current state-of-the-art methods, our lightest model achieves superior RayIoU on the Occ3D-nuScenes dataset at near $2\times$ FPS, while our heaviest model surpasses previous best results by 6.1 RayIoU. 
-
-## Method
-
-![method](demos/structure.png)
-
-## Model Zoo
-
-**Image-only model**
-
-| Models                                          | Epochs |  *Q* | *P* | mIoU | RayIoU<sub>1m</sub> | RayIoU<sub>2m</sub> | RayIoU<sub>4m</sub> | RayIoU |  FPS | Link |
-|:-----------------------------------------------:|:------:|:----:|:---:|:----:|:-------------------:|:-------------------:|:-------------------:|:------:|:----:|:----:|
-| [OPUS-T](configs/opus-t_r50_704x256_8f_100e.py) |   100  | 600  | 128 | 33.2 |         31.7        |         39.2        |         44.3        |  38.4  | 22.4 | [Model](https://drive.google.com/file/d/10-dOpejD7gQMYY8aDhrWUXtAEIWO1KZr/view?usp=sharing) |
-| [OPUS-S](configs/opus-s_r50_704x256_8f_100e.py) |   100  | 1200 | 64  | 34.2 |         32.6        |         39.9        |         44.7        |  39.1  | 20.7 | [Model](https://drive.google.com/file/d/1g1mkl3ij11wUQPDRjbftXw8cLd6lkBy7/view?usp=sharing) |
-| [OPUS-M](configs/opus-m_r50_704x256_8f_100e.py) |   100  | 2400 | 32  | 35.6 |         33.7        |         41.1        |         46.0        |  40.3  | 13.4 | [Model](https://drive.google.com/file/d/1leXwavqWHP0JdkeprB5ynNH8IttHRkQk/view?usp=sharing) |
-| [OPUS-L](configs/opus-l_r50_704x256_8f_100e.py) |   100  | 4800 | 16  | 36.2 |         34.7        |         42.1        |         46.7        |  41.2  |  7.2 | [Model](https://drive.google.com/file/d/17Ga2Uk1BPsLIq1tM1qxiK8LTX-GsKP39/view?usp=sharing) |
-
-**Fusion model**
-
-| Models                                                          | Epochs |  *Q* | *P* | mIoU | RayIoU<sub>1m</sub> | RayIoU<sub>2m</sub> | RayIoU<sub>4m</sub> | RayIoU |  FPS | Link |
-|:---------------------------------------------------------------:|:------:|:----:|:---:|:----:|:-------------------:|:-------------------:|:-------------------:|:------:|:----:|:----:|
-| [OPUS-Fusion-T](configs/opus-t_with-pts_r50_704x256_8f_100e.py) |   100  | 600  | 128 | 48.7 |         45.4        |         50.3        |         53.3        |  49.7  | 10.2 | [Model]() |
-| [OPUS-Fusion-S](configs/opus-s_with-pts_r50_704x256_8f_100e.py) |   100  | 1200 | 64  | 49.6 |         45.9        |         51.0        |         54.1        |  50.4  |  9.5 | [Model]() |
-| [OPUS-Fusion-M](configs/opus-m_with-pts_r50_704x256_8f_100e.py) |   100  | 2400 | 32  | 50.5 |         46.4        |         51.2        |         54.2        |  50.6  |  6.9 | [Model]() |
-| [OPUS-Fusion-L](configs/opus-l_with-pts_r50_704x256_8f_100e.py) |   100  | 4800 | 16  | 51.4 |         47.6        |         52.4        |         55.3        |  51.8  |  3.2 | [Model]() |
-
-**note: *Q* denotes query numbers. *P* is the number of predicted points per query.**
+</details>
 
 ## Training and Evaluation
 
@@ -139,14 +116,14 @@ Note: These `*.pkl` files can also be generated with our script: `gen_sweep_info
 Download pre-trained [weights](https://download.openmmlab.com/mmdetection3d/v0.1.0_models/nuimages_semseg/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim/cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth)
 provided by mmdet3d, and put them in directory `pretrain/`.
 
-Download DAL-tiny pre-trained [weights]() in directory `pretrain/` and run `python gen_merged_ckpt.py` when reimplementing OPUS-Fusion:
+**Important:** Download DAL-tiny pre-trained [weights](https://huggingface.co/jbwang1997/OPUS) in directory `pretrain/` and run `python scripts/gen_fusion_pretrain_model.py` when reimplementing OPUS-Fusion:
 
 
 ```
 pretrain
 ├── cascade_mask_rcnn_r50_fpn_coco-20e_20e_nuim_20201009_124951-40963960.pth
-├── dal-tiny.pth
-├── merged_ckpt.pth
+├── dal-tiny-map66.9-nds71.1.pth (optional)
+├── fusion_pretrain_model.pth
 ```
 
 Train OPUS with a single GPU:
@@ -190,6 +167,28 @@ Visualizing inputs and ground-truths
 ```
 python visualize.py --config configs/opus-t_r50_704x256_8f_12e.py --weights path/to/checkpoints --vis-input --vis-gt
 ```
+
+## Model Zoo
+
+**Camera only OPUSV1 on NuScene-Occ3D dataest**
+
+| Models                                          | Epochs |  *Q* | *P* | mIoU | RayIoU<sub>1m</sub> | RayIoU<sub>2m</sub> | RayIoU<sub>4m</sub> | RayIoU |  FPS | Link |
+|:-----------------------------------------------:|:------:|:----:|:---:|:----:|:-------------------:|:-------------------:|:-------------------:|:------:|:----:|:----:|
+| [OPUSV1-T](configs/opusv1_nusc-occ3d/opusv1-t_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 600  | 128 | 33.2 |         31.7        |         39.2        |         44.3        |  38.4  | 22.4 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+| [OPUSV1-S](configs/opusv1_nusc-occ3d/opusv1-s_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 1200 | 64  | 34.2 |         32.6        |         39.9        |         44.7        |  39.1  | 20.7 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+| [OPUSV1-M](configs/opusv1_nusc-occ3d/opusv1-m_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 2400 | 32  | 35.6 |         33.7        |         41.1        |         46.0        |  40.3  | 13.4 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+| [OPUSV1-L](configs/opusv1_nusc-occ3d/opusv1-l_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 4800 | 16  | 36.2 |         34.7        |         42.1        |         46.7        |  41.2  |  7.2 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+
+**Camera Lidar fusion OPUSV1 on NuScene-Occ3D dataset**
+
+| Models                                                          | Epochs |  *Q* | *P* | mIoU | RayIoU<sub>1m</sub> | RayIoU<sub>2m</sub> | RayIoU<sub>4m</sub> | RayIoU |  FPS | Link |
+|:---------------------------------------------------------------:|:------:|:----:|:---:|:----:|:-------------------:|:-------------------:|:-------------------:|:------:|:----:|:----:|
+| [OPUSV1-Fusion-T](configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-t_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 600  | 128 | 48.7 |         45.4        |         50.3        |         53.3        |  49.7  | 10.2 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+| [OPUSV1-Fusion-S](configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-s_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 1200 | 64  | 49.6 |         45.9        |         51.0        |         54.1        |  50.4  |  9.5 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+| [OPUSV1-Fusion-M](configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-m_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 2400 | 32  | 50.5 |         46.4        |         51.2        |         54.2        |  50.6  |  6.9 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+| [OPUSV1-Fusion-L](configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-l_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 4800 | 16  | 51.4 |         47.6        |         52.4        |         55.3        |  51.8  |  3.2 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+
+**note: *Q* denotes query numbers. *P* is the number of predicted points per query.**
 
 ## Bibtex
 

@@ -11,12 +11,12 @@ from nuscenes.eval.common.utils import Quaternion
 from nuscenes.utils.geometry_utils import transform_matrix
 from torch.utils.data import DataLoader
 from models.utils import sparse2dense
-from .old_metrics import Metric_mIoU
+from .old_metrics import Metric_mIoU_Occ3D
 from .utils import compose_ego2img
 
 
 @DATASETS.register_module()
-class NuScenesOccDataset(NuScenesDataset):    
+class NuScenesOcc3DDataset(NuScenesDataset):    
     def __init__(self, *args, **kwargs):
         super().__init__(filter_empty_gt=False, *args, **kwargs)
         self.data_infos = self.load_annotations(self.ann_file)
@@ -82,7 +82,7 @@ class NuScenesOccDataset(NuScenesDataset):
             lidar2ego_translation, Quaternion(lidar2ego_rotation), inverse=True)
 
         input_dict = dict(
-            sample_idx=info['token'],
+            sample_token=info['token'],
             scene_name=info['scene_name'],
             timestamp=info['timestamp'] / 1e6,
             ego2lidar=ego2lidar,
@@ -147,13 +147,13 @@ class NuScenesOccDataset(NuScenesDataset):
         lidar_origins = []
 
         print('\nStarting Evaluation...')
-        metric = Metric_mIoU(use_image_mask=True)
+        metric = Metric_mIoU_Occ3D(use_image_mask=True)
 
         from tqdm import tqdm
         for i in tqdm(range(len(occ_results))):
             result_dict = occ_results[i]
             info = self.get_data_info(i)
-            token = info['sample_idx']
+            token = info['sample_token']
             scene_name = info['scene_name']
             occ_root = 'data/nuscenes/gts/'
             occ_file = osp.join(occ_root, scene_name, token, 'labels.npz')

@@ -1,13 +1,4 @@
-'''
-    navie version:
-        lidar branch: BEV
-        sample way: sample feature in BEV
-        fusion way: GroupMixing2
-
-        load from dal-t lidar branch and cascade img branch
-'''
-
-dataset_type = 'NuScenesOccDataset'
+dataset_type = 'NuScenesOcc3DDataset'
 dataset_root = 'data/nuscenes/'
 occ_root = 'data/nuscenes/gts/'
 
@@ -41,11 +32,11 @@ voxel_size = [0.4, 0.4, 0.4]
 # arch config
 embed_dims = 256
 num_layers = 6
-num_query = 1200
+num_query = 2400
 num_frames = 8
 num_levels = 4
 num_points = 2
-num_refines = [1, 4, 16, 32, 64, 128]
+num_refines = [1, 2, 4, 8, 16, 32]
 
 img_backbone = dict(
     type='ResNet',
@@ -100,7 +91,7 @@ pts_neck=dict(
     use_conv_for_no_stride=True)
 
 model = dict(
-    type='OPUS_PT',
+    type='OPUSV1Fusion',
     use_grid_mask=False,
     data_aug=dict(
         img_color_aug=True,  # Move some augmentations to GPU
@@ -115,7 +106,7 @@ model = dict(
     pts_backbone=pts_backbone,
     pts_neck=pts_neck,
     pts_bbox_head=dict(
-        type='OPUS_PT_Head',
+        type='OPUSV1FusionHead',
         num_classes=len(occ_names),
         in_channels=embed_dims,
         num_query=num_query,
@@ -123,7 +114,7 @@ model = dict(
         voxel_size=voxel_size,
         init_pos_lidar='curr',
         transformer=dict(
-            type='OPUSTransformer_PT',
+            type='OPUSV1FusionTransformer',
             embed_dims=embed_dims,
             num_frames=num_frames,
             num_points=num_points,
@@ -170,7 +161,7 @@ train_pipeline = [
          pad_empty_sweeps=True, remove_close=True),
     dict(type='PointsFromLiDARToEgo'),
     dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True, with_attr_label=False),
-    dict(type='LoadOccFromFile', occ_root=occ_root), 
+    dict(type='LoadOcc3DFromFile', occ_root=occ_root), 
     dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='ObjectNameFilter', classes=object_names),
     dict(type='RandomTransformImage', ida_aug_conf=ida_aug_conf, training=True),
@@ -260,11 +251,10 @@ lr_config = dict(
     min_lr_ratio=1e-3
 )
 total_epochs = 100
-# batch_size = 1
 batch_size = 8
 
 # load pretrained weights
-load_from = 'pretrain/merged_ckpt.pth'
+load_from = 'pretrain/fusion_pretrain_model.pth'
 revise_keys = []
 
 # resume the last training

@@ -1,4 +1,4 @@
-dataset_type = 'NuScenesOccDataset'
+dataset_type = 'NuScenesOcc3DDataset'
 dataset_root = 'data/nuscenes/'
 occ_root = 'data/nuscenes/gts/'
 
@@ -58,7 +58,7 @@ img_norm_cfg = dict(
     to_rgb=True)
 
 model = dict(
-    type='OPUS',
+    type='OPUSV1',
     use_grid_mask=False,
     data_aug=dict(
         img_color_aug=True,  # Move some augmentations to GPU
@@ -68,14 +68,14 @@ model = dict(
     img_backbone=img_backbone,
     img_neck=img_neck,
     pts_bbox_head=dict(
-        type='OPUSHead',
+        type='OPUSV1Head',
         num_classes=len(occ_names),
         in_channels=embed_dims,
         num_query=num_query,
         pc_range=point_cloud_range,
         voxel_size=voxel_size,
         transformer=dict(
-            type='OPUSTransformer',
+            type='OPUSV1Transformer',
             embed_dims=embed_dims,
             num_frames=num_frames,
             num_points=num_points,
@@ -119,7 +119,7 @@ train_pipeline = [
     dict(type='LoadMultiViewImageFromFiles', to_float32=False, color_type='color'),
     dict(type='LoadMultiViewImageFromMultiSweeps', sweeps_num=num_frames - 1),
     dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True, with_attr_label=False),
-    dict(type='LoadOccFromFile', occ_root=occ_root), 
+    dict(type='LoadOcc3DFromFile', occ_root=occ_root), 
     dict(type='ObjectRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='ObjectNameFilter', classes=object_names),
     dict(type='RandomTransformImage', ida_aug_conf=ida_aug_conf, training=True),
@@ -202,7 +202,7 @@ lr_config = dict(
     warmup_ratio=1.0 / 3,
     min_lr_ratio=1e-3
 )
-total_epochs = 24
+total_epochs = 100
 batch_size = 8
 
 # load pretrained weights

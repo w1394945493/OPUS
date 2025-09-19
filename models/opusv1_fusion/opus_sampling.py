@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
-from .bbox.utils import decode_points
-from .utils import rotation_3d_in_axis, DUMP
-from .csrc.wrapper import msmv_sampling, msmv_sampling_pytorch
+from ..bbox.utils import decode_points, encode_points
+from ..utils import rotation_3d_in_axis, DUMP
+from ..csrc.wrapper import msmv_sampling, msmv_sampling_pytorch
 
 
 def make_sample_points(query_points, offset, pc_range):
@@ -122,3 +122,27 @@ def sampling_4d(sample_points, mlvl_feats, scale_weights, occ2img, image_h, imag
     final = final.flatten(3, 4)  # [B, Q, G, FP, C]
 
     return final
+
+
+def sampling_pts_feats(sample_points, pts_feats, occ2lidar, pc_range):
+    C = pts_feats.shape[1]
+    B, Q, G, P, _ = sample_points.shape  # [B, Q, G, P, 3]
+    sample_points = sample_points.permute(0, 2, 1, 3, 4)
+    sample_points = sample_points.reshape(B*G, Q, P, 3)  # [BG, Q, P, 3]
+
+    occ2lidar = occ2lidar[:, None, None, None, :, :]  # [B, 1, 1, 1, 4, 4]
+    occ2lidar = occ2lidar.expand(B, G, Q, P, 4, 4)
+    occ2lidar = occ2lidar.reshape(B*G, Q, P, 4, 4)
+
+    ones = torch.ones_like(sample_points[..., :1])
+    sample_points = torch.cat([sample_points, ones], dim=-1)[..., None] # [BG, Q, P, 4, 1]
+    sample_points = torch.matmul(occ2lidar, sample_points).squeeze(-1)
+
+    norm_sample_points = encode_points(sample_points[..., :3], pc_range)
+    norm_sample_points = norm_sample_points[..., :2] * 2 - 1 # [BG, Q, P, 2]
+
+    feat = F.grid_sample(pts_feats, norm_sample_points, padding_mode='zeros', align_corners=True) 
+    feat = feat.reshape(B, G, C, Q, P)
+    feat = feat.permute(0, 3, 1, 4, 2)  # [B, Q, G, P, C]
+
+    return feat

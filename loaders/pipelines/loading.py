@@ -10,34 +10,8 @@ from mmdet3d.core.points import BasePoints
 from ..utils import compose_ego2img
 
 
-def compose_lidar2img(ego2global_translation_curr,
-                      ego2global_rotation_curr,
-                      lidar2ego_translation_curr,
-                      lidar2ego_rotation_curr,
-                      sensor2global_translation_past,
-                      sensor2global_rotation_past,
-                      cam_intrinsic_past):
-    
-    R = sensor2global_rotation_past @ (inv(ego2global_rotation_curr).T @ inv(lidar2ego_rotation_curr).T)
-    T = sensor2global_translation_past @ (inv(ego2global_rotation_curr).T @ inv(lidar2ego_rotation_curr).T)
-    T -= ego2global_translation_curr @ (inv(ego2global_rotation_curr).T @ inv(lidar2ego_rotation_curr).T) + lidar2ego_translation_curr @ inv(lidar2ego_rotation_curr).T
-
-    lidar2cam_r = inv(R.T)
-    lidar2cam_t = T @ lidar2cam_r.T
-
-    lidar2cam_rt = np.eye(4)
-    lidar2cam_rt[:3, :3] = lidar2cam_r.T
-    lidar2cam_rt[3, :3] = -lidar2cam_t
-
-    viewpad = np.eye(4)
-    viewpad[:cam_intrinsic_past.shape[0], :cam_intrinsic_past.shape[1]] = cam_intrinsic_past
-    lidar2img = (viewpad @ lidar2cam_rt.T).astype(np.float32)
-
-    return lidar2img
-
-
 @PIPELINES.register_module()
-class LoadOccFromFile:
+class LoadOcc3DFromFile:
 
     def __init__(self, occ_root, ignore_class_names=[]):
         self.occ_root = occ_root
@@ -50,8 +24,8 @@ class LoadOccFromFile:
         ]
 
     def __call__(self, results):
-        scene_name, sample_idx = results['scene_name'], results['sample_idx']
-        occ_file = osp.join(self.occ_root, scene_name, sample_idx, 'labels.npz')
+        scene_name, sample_token = results['scene_name'], results['sample_token']
+        occ_file = osp.join(self.occ_root, scene_name, sample_token, 'labels.npz')
         # load lidar and camera visible label
         occ_labels = np.load(occ_file)
         mask_lidar = occ_labels['mask_lidar'].astype(np.bool_)  # [200, 200, 16]
@@ -67,6 +41,42 @@ class LoadOccFromFile:
             if self.occ_class_names[class_id] in self.ignore_class_names:
                 semantics[mask] = self.num_classes - 1
         results['voxel_semantics'] = semantics
+        return results
+
+
+@PIPELINES.register_module()
+class LoadOccupancyFromFile:
+
+    def __init__(self, occ_root, ignore_class_names=['noise']):
+        self.occ_root = occ_root
+        self.ignore_class_names = ignore_class_names
+        self.pc_range = np.array([-51.2, -51.2, -5.0, 51.2, 51.2, 3])
+        self.voxel_size = np.array([0.2, 0.2, 0.2])
+        self.occ_class_names = [
+            'noise', 'barrier', 'bicycle', 'bus', 'car', 'construction_vehicle',
+            'motorcycle', 'pedestrian', 'traffic_cone', 'trailer', 'truck',
+            'driveable_surface', 'other_flat', 'sidewalk', 'terrain', 'manmade', 'vegetation'
+        ]
+
+    def __call__(self, results):
+        scene_token, lidar_token = results['scene_token'], results['lidar_token']
+        occ_file = osp.join(self.occ_root, f'scene_{scene_token}', 'occupancy', f'{lidar_token}.npy')
+        # load lidar and camera visible label
+        occ_labels = np.load(occ_file)
+        coors, labels = occ_labels[:, :3], occ_labels[:, 3]
+
+        curr_class_names = [n for n in self.occ_class_names if n not in self.ignore_class_names]
+        empty_labels = len(curr_class_names)
+        label_mapper = [curr_class_names.index(n) if n in curr_class_names else empty_labels
+                        for n in self.occ_class_names]
+        label_mapper = np.array(label_mapper)
+        labels = label_mapper[labels]
+
+        scene_size = self.pc_range[3:] - self.pc_range[:3]
+        voxel_num = (scene_size / self.voxel_size).astype(np.int64)
+        semantics = np.full(voxel_num, empty_labels, dtype=np.uint8)
+        semantics[coors[:, 2], coors[:, 1], coors[:, 0]] = labels
+        results['voxel_semantics'] = np.ascontiguousarray(semantics)
         return results
 
 
@@ -577,9 +587,6 @@ class LoadPointsFromMultiSweeps:
 
 @PIPELINES.register_module()
 class PointsFromLiDARToEgo:
-    ### transform the ldiar coord to lidar ego coord
-    def __init__(self, base='ego'):
-        self.base = base
     
     def __call__(self, results):
         points, ego2lidar = results['points'], results['ego2lidar']
@@ -591,4 +598,23 @@ class PointsFromLiDARToEgo:
 
         points.tensor = torch.cat([pts, points.tensor[..., 3:]], dim=1)
         results['points'] = points
+        return results
+
+
+@PIPELINES.register_module()
+class LiDARToOccSpace:
+    
+    def __call__(self, results):
+        points = results['points']
+        ego2lidar, ego2occ = results['ego2lidar'], results['ego2occ']
+
+        lidar2ego = torch.tensor(np.linalg.inv(ego2lidar)).float()
+        lidar2occ = torch.tensor(ego2occ @ lidar2ego.numpy()).float()
+        ones = torch.ones_like(points.tensor[..., :1])
+        pts = torch.cat([points.tensor[..., :3], ones], dim=1).transpose(0, 1)
+        pts = torch.matmul(lidar2occ, pts).transpose(0, 1)[...,:3]
+
+        points.tensor = torch.cat([pts, points.tensor[..., 3:]], dim=1)
+        results['points'] = points
+        results['ego2lidar'] = ego2occ.copy()
         return results

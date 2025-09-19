@@ -8,20 +8,11 @@ from mmcv.runner.fp16_utils import cast_tensor_type
 from mmdet.models import DETECTORS
 from mmdet3d.core import bbox3d2result
 from mmdet3d.models.detectors.mvx_two_stage import MVXTwoStageDetector
-from .utils import (GridMask, pad_multiple, GpuPhotoMetricDistortion,
-                    disable_all_fp16_function)
-from mmcv.cnn import ConvModule
+from ..utils import GridMask, pad_multiple, GpuPhotoMetricDistortion
 
 
 @DETECTORS.register_module()
-class OPUS_PT(MVXTwoStageDetector):
-    '''
-        specifically for 2D SECOND
-
-        Adding:
-            2D feature
-
-    '''
+class OPUSV1(MVXTwoStageDetector):
     def __init__(self,
                  use_grid_mask=True,
                  data_aug=None,
@@ -39,10 +30,7 @@ class OPUS_PT(MVXTwoStageDetector):
                  img_rpn_head=None,
                  train_cfg=None,
                  test_cfg=None,
-                 pretrained=None,
-                 second_out_dim=512,
-                 pts_feat_dim=256,
-                 ):
+                 pretrained=None):
         super().__init__(pts_voxel_layer, pts_voxel_encoder, pts_middle_encoder,
                          pts_fusion_layer, img_backbone, pts_backbone, img_neck,
                          pts_neck, pts_bbox_head, img_roi_head, img_rpn_head,
@@ -56,21 +44,8 @@ class OPUS_PT(MVXTwoStageDetector):
         self.memory = {}
         self.queue = queue.Queue()
 
-        self.final_conv = ConvModule(
-            second_out_dim,
-            pts_feat_dim,
-            kernel_size=3,
-            stride=1,
-            padding=1,
-            bias=True,
-            conv_cfg=dict(type='Conv2d')
-        )
-
-        self.pts_feat_dim=pts_feat_dim
-
     @auto_fp16(apply_to=('img'), out_fp32=True)
-    def extract_img_feat_(self, img):
-        # import pdb; pdb.set_trace()
+    def extract_img_feat(self, img):
         if self.use_grid_mask:
             img = self.grid_mask(img)
 
@@ -84,7 +59,7 @@ class OPUS_PT(MVXTwoStageDetector):
 
         return img_feats
 
-    def extract_img_feat(self, img, img_metas):
+    def extract_feat(self, img, img_metas):
         if isinstance(img, list):
             img = torch.stack(img, dim=0)
 
@@ -132,12 +107,12 @@ class OPUS_PT(MVXTwoStageDetector):
             img_grad = img[:, :self.stop_prev_grad]
             img_nograd = img[:, self.stop_prev_grad:]
 
-            all_img_feats = [self.extract_img_feat_(img_grad.reshape(-1, C, H, W))]
+            all_img_feats = [self.extract_img_feat(img_grad.reshape(-1, C, H, W))]
 
             with torch.no_grad():
                 self.eval()
                 for k in range(img_nograd.shape[1]):
-                    all_img_feats.append(self.extract_img_feat_(img_nograd[:, k].reshape(-1, C, H, W)))
+                    all_img_feats.append(self.extract_img_feat(img_nograd[:, k].reshape(-1, C, H, W)))
                 self.train()
 
             img_feats = []
@@ -147,7 +122,7 @@ class OPUS_PT(MVXTwoStageDetector):
                 img_feat = img_feat.reshape(-1, C, H, W)
                 img_feats.append(img_feat)
         else:
-            img_feats = self.extract_img_feat_(img)
+            img_feats = self.extract_img_feat(img)
 
         img_feats_reshaped = []
         for img_feat in img_feats:
@@ -155,18 +130,8 @@ class OPUS_PT(MVXTwoStageDetector):
             img_feats_reshaped.append(img_feat.view(B, int(BN / B), C, H, W))
 
         return img_feats_reshaped
-    
-    @auto_fp16(apply_to=('pts'), out_fp32=True)
-    def extract_pts_feat(self, pts):
-        voxels, num_points, coors = self.voxelize(pts)
-        voxel_features = self.pts_voxel_encoder(voxels, num_points, coors)
-        batch_size = coors[-1, 0] + 1
-        x = self.pts_middle_encoder(voxel_features, coors, batch_size)
-        x = self.pts_backbone(x)
-        if self.with_pts_neck:
-            x = self.pts_neck(x)
-        return x
 
+    @force_fp32(apply_to=('img', 'points'))
     def forward(self, return_loss=True, **kwargs):
         """Calls either forward_train or forward_test depending on whether
         return_loss=True.
@@ -182,13 +147,6 @@ class OPUS_PT(MVXTwoStageDetector):
         else:
             return self.forward_test(**kwargs)
 
-    def pts_feat_proj(self,pts_feat):
-
-        # (B, C, Dy, Dx) --> (B, C, Dy, Dx)
-        pts_feat=self.final_conv(pts_feat)
-
-        return pts_feat
-        
     def forward_train(self,
                       points=None,
                       img_metas=None,
@@ -226,67 +184,38 @@ class OPUS_PT(MVXTwoStageDetector):
         Returns:
             dict: Losses of different branches.
         """
-        img_feats = None if not self.with_img_backbone else \
-            self.extract_img_feat(img, img_metas)
-        pts_feats = None if not self.with_pts_backbone else \
-            self.extract_pts_feat(points)
-        
-        # B, C, Dy, Dx
-        pts_feats = pts_feats[0]
-        pts_feats=self.pts_feat_proj(pts_feats)
-        
-        ## hardcode
-        # ensure the shape is: dy,dx
-        assert(tuple(pts_feats.shape[-2:])==(200,200)),\
-            'the shape of pts feat is not correct in training'
+        img_feats = self.extract_feat(img, img_metas)
 
-        # forward occ head
-        outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
-                                  img_metas=img_metas, points=points)
+        outs = self.pts_bbox_head(img_feats, img_metas)
+        if mask_camera is None:
+            mask_camera = torch.ones_like(voxel_semantics)
         loss_inputs = [voxel_semantics, mask_camera, outs]
         losses = self.pts_bbox_head.loss(*loss_inputs)
 
         return losses
 
-    @disable_all_fp16_function
-    def forward_test(self, img_metas, img=None, points=None, **kwargs):
+    def forward_test(self, img_metas, img=None, **kwargs):
         for var, name in [(img_metas, 'img_metas')]:
             if not isinstance(var, list):
                 raise TypeError('{} must be a list, but got {}'.format(
                     name, type(var)))
         img = [img] if img is None else img
-        points = [points] if points is None else points
-        return self.simple_test(img_metas[0], img[0], points[0], **kwargs)
+        return self.simple_test(img_metas[0], img[0], **kwargs)
 
-    def simple_test(self, img_metas, img=None, points=None, rescale=False):
+    def simple_test(self, img_metas, img=None, rescale=False):
         world_size = get_dist_info()[1]
         if world_size == 1:  # online
-            return self.simple_test_online(img_metas, img, points, rescale)
+            return self.simple_test_online(img_metas, img, rescale)
         else:  # offline
-            return self.simple_test_offline(img_metas, img, points, rescale)
+            return self.simple_test_offline(img_metas, img, rescale)
 
-    def simple_test_offline(self, img_metas, img=None, points=None, rescale=False):
-        img_feats = None if not self.with_img_backbone else \
-            self.extract_img_feat(img, img_metas)
-        pts_feats = None if not self.with_pts_backbone else \
-            self.extract_pts_feat(points)
-        
-        # B, C, Dy, Dx
-        pts_feats = pts_feats[0]
-        pts_feats=self.pts_feat_proj(pts_feats)
-        
-        ## hardcode
-        # ensure the shape is: dy,dx
-        assert(tuple(pts_feats.shape[-2:])==(200,200)),\
-            'the shape of pts feat is not correct in training'
-
-        outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
-                                  img_metas=img_metas, points=points)
-        
-        torch.cuda.empty_cache()
+    def simple_test_offline(self, img_metas, img=None, rescale=False):
+        img_feats = self.extract_feat(img=img, img_metas=img_metas)
+        outs = self.pts_bbox_head(img_feats, img_metas)
         return self.pts_bbox_head.get_occ(outs, img_metas[0], rescale=rescale)
 
-    def simple_test_online(self, img_metas, img=None, points=None, rescale=False):
+    def simple_test_online(self, img_metas, img=None, rescale=False):
+        self.fp16_enabled = False
         assert len(img_metas) == 1  # batch_size = 1
 
         B, N, C, H, W = img.shape
@@ -320,7 +249,7 @@ class OPUS_PT(MVXTwoStageDetector):
                 img_feats_curr = self.memory[img_filenames[img_indices[0]]]
             else:
                 # extract feature and put into memory
-                img_feats_curr = self.extract_img_feat(img[:, i], img_metas_curr)
+                img_feats_curr = self.extract_feat(img[:, i], img_metas_curr)
                 self.memory[img_filenames[img_indices[0]]] = img_feats_curr
                 self.queue.put(img_filenames[img_indices[0]])
                 while self.queue.qsize() >= 16:  # avoid OOM
@@ -348,20 +277,6 @@ class OPUS_PT(MVXTwoStageDetector):
         img_metas = img_metas_reorganized
         img_feats = cast_tensor_type(img_feats, torch.half, torch.float32)
 
-        # extract points features
-        pts_feats = None if not self.with_pts_backbone else \
-            self.extract_pts_feat(points)
-        
-        # B, C, Dy, Dx
-        pts_feats = pts_feats[0]
-        pts_feats=self.pts_feat_proj(pts_feats)
-
-        ## hardcode
-        # ensure the shape is: dz,dy,dx
-        assert(tuple(pts_feats.shape[-2:])==(200,200)),\
-            'the shape of pts feat is not correct in test_oneline'
-
         # run occupancy predictor
-        outs = self.pts_bbox_head(mlvl_feats=img_feats, pts_feats=pts_feats,
-                                  img_metas=img_metas, points=points)
+        outs = self.pts_bbox_head(img_feats, img_metas)
         return self.pts_bbox_head.get_occ(outs, img_metas[0], rescale=rescale)

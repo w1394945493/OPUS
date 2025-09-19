@@ -1,7 +1,4 @@
 from .pipelines import __all__
 from .nuscenes_dataset import CustomNuScenesDataset
-from .nuscenes_occ_dataset import NuScenesOccDataset
-
-__all__ = [
-    'CustomNuScenesDataset', 'NuSceneOccDataset'
-]
+from .nuscenes_occ3d_dataset import NuScenesOcc3DDataset
+from .nuscenes_occupancy_dataset import NuScenesOccupancyDataset

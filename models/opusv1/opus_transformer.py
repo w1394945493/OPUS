@@ -7,15 +7,15 @@ from mmcv.cnn import bias_init_with_prob, Scale
 from mmcv.cnn.bricks.transformer import MultiheadAttention, FFN
 from mmcv.ops import knn
 from mmdet.models.utils.builder import TRANSFORMER
-from .bbox.utils import decode_bbox, decode_points, encode_points
-from .utils import inverse_sigmoid, DUMP
 from .opus_sampling import sampling_4d
-from .checkpoint import checkpoint as cp
-from .csrc.wrapper import MSMV_CUDA
+from ..bbox.utils import decode_bbox, decode_points, encode_points
+from ..utils import inverse_sigmoid, DUMP
+from ..checkpoint import checkpoint as cp
+from ..csrc.wrapper import MSMV_CUDA
 
 
 @TRANSFORMER.register_module()
-class OPUSTransformer(BaseModule):
+class OPUSV1Transformer(BaseModule):
     def __init__(self,
                  embed_dims,
                  num_frames=8,

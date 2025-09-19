@@ -351,10 +351,10 @@ class RandomTransformOcc:
 
     def sample_bda_augmentation(self):
         """Generate bda augmentation values based on bda_config."""
-        rotate_bda = np.random.uniform(*self.bda_aug_conf['rot_lim'])
-        scale_bda = np.random.uniform(*self.bda_aug_conf['scale_lim'])
-        flip_dx = np.random.uniform() < self.bda_aug_conf['flip_dx_ratio']
-        flip_dy = np.random.uniform() < self.bda_aug_conf['flip_dy_ratio']
+        rotate_bda = np.random.uniform(*self.bda_aug_conf.get('rot_lim', (0, 0)))
+        scale_bda = np.random.uniform(*self.bda_aug_conf.get('scale_lim', (1, 1)))
+        flip_dx = np.random.uniform() < self.bda_aug_conf.get('flip_dx_ratio', 0)
+        flip_dy = np.random.uniform() < self.bda_aug_conf.get('flip_dy_ratio', 0)
         return rotate_bda, scale_bda, flip_dx, flip_dy
 
     def bev_transform(self, rotate_angle, scale_ratio, flip_dx, flip_dy):

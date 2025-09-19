@@ -44,6 +44,8 @@ def add_sweep_info(nusc, sample_infos):
         # add scene name for occupancy
         scene = nusc.get('scene', sample['scene_token'])
         sample_infos['infos'][curr_id]['scene_name'] = scene['name']
+        sample_infos['infos'][curr_id]['scene_token'] = scene['token']
+        sample_infos['infos'][curr_id]['lidar_token'] = sample['data']['LIDAR_TOP']
 
         cam_types = [
             'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_BACK_RIGHT',
