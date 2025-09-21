@@ -586,22 +586,6 @@ class LoadPointsFromMultiSweeps:
 
 
 @PIPELINES.register_module()
-class PointsFromLiDARToEgo:
-    
-    def __call__(self, results):
-        points, ego2lidar = results['points'], results['ego2lidar']
-
-        lidar2ego = torch.tensor(np.linalg.inv(ego2lidar)).float()
-        ones = torch.ones_like(points.tensor[..., :1])
-        pts = torch.cat([points.tensor[..., :3], ones], dim=1).transpose(0, 1)
-        pts = torch.matmul(lidar2ego, pts).transpose(0, 1)[...,:3]
-
-        points.tensor = torch.cat([pts, points.tensor[..., 3:]], dim=1)
-        results['points'] = points
-        return results
-
-
-@PIPELINES.register_module()
 class LiDARToOccSpace:
     
     def __call__(self, results):
