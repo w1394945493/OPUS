@@ -86,6 +86,7 @@ class NuScenesOcc3DDataset(NuScenesDataset):
             scene_name=info['scene_name'],
             timestamp=info['timestamp'] / 1e6,
             ego2lidar=ego2lidar,
+            ego2obj=ego2lidar,
             ego2occ=np.eye(4),
             ego2global_translation=ego2global_translation,
             ego2global_rotation=ego2global_rotation_mat,

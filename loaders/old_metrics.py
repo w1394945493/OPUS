@@ -153,24 +153,15 @@ class Metric_mIoU_Occ3D():
         return round(np.nanmean(mIoU[:self.num_classes-1]) * 100, 2)
 
 
-class Metric_mIoU_OpenOcc:
+class Metric_mIoU_Occupancy:
 
-    def __init__(self,
-                 save_dir='.',
-                 num_classes=17):
-        if num_classes == 17:
-            self.class_names = [
-                'barrier', 'bicycle', 'bus', 'car', 'construction_vehicle',
-                'motorcycle', 'pedestrian', 'traffic_cone', 'trailer', 'truck',
-                'driveable_surface', 'other_flat', 'sidewalk',
-                'terrain', 'manmade', 'vegetation','free'
-            ]
-        elif num_classes == 2:
-            self.class_names = ['non-free', 'free']
-        
-        self.save_dir = save_dir
-        self.num_classes = num_classes
-
+    def __init__(self):
+        self.class_names = [
+            'barrier', 'bicycle', 'bus', 'car', 'construction_vehicle',
+            'motorcycle', 'pedestrian', 'traffic_cone', 'trailer', 'truck',
+            'driveable_surface', 'other_flat', 'sidewalk',
+            'terrain', 'manmade', 'vegetation','free'
+        ]
         self.point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3]
         self.occupancy_size = [0.2, 0.2, 0.2]
         self.voxel_size = 0.2
@@ -178,36 +169,16 @@ class Metric_mIoU_OpenOcc:
         self.occ_ydim = int((self.point_cloud_range[4] - self.point_cloud_range[1]) / self.occupancy_size[1])
         self.occ_zdim = int((self.point_cloud_range[5] - self.point_cloud_range[2]) / self.occupancy_size[2])
         self.voxel_num = self.occ_xdim * self.occ_ydim * self.occ_zdim
+        self.num_classes = len(self.class_names)
         self.hist = np.zeros((self.num_classes, self.num_classes))
+        self.bin_hist = np.zeros((2, 2))
         self.cnt = 0
 
     def hist_info(self, n_cl, pred, gt):
-        """
-        build confusion matrix
-        # empty classes:0
-        non-empty class: 0-16
-        free voxel class: 17
-
-        Args:
-            n_cl (int): num_classes_occupancy
-            pred (1-d array): pred_occupancy_label
-            gt (1-d array): gt_occupancu_label
-
-        Returns:
-            tuple:(hist, correctly number_predicted_labels, num_labelled_sample)
-        """
         assert pred.shape == gt.shape
         k = (gt >= 0) & (gt < n_cl)  # exclude 255
-        labeled = np.sum(k)
-        correct = np.sum((pred[k] == gt[k]))
-
-        return (
-            np.bincount(
-                n_cl * gt[k].astype(int) + pred[k].astype(int), minlength=n_cl ** 2
-            ).reshape(n_cl, n_cl),
-            correct,
-            labeled,
-        )
+        return np.bincount(
+            n_cl * gt[k].astype(int) + pred[k].astype(int), minlength=n_cl ** 2).reshape(n_cl, n_cl)
 
     def per_class_iu(self, hist):
         #return np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
@@ -215,41 +186,34 @@ class Metric_mIoU_OpenOcc:
         result[hist.sum(1) == 0] = float('nan')
         return result
 
-    def compute_mIoU(self, pred, label, n_classes):
-        hist = np.zeros((n_classes, n_classes))
-        new_hist, correct, labeled = self.hist_info(n_classes, pred.flatten(), label.flatten())
-        hist += new_hist
-        mIoUs = self.per_class_iu(hist)
-        # for ind_class in range(n_classes):
-        #     print(str(round(mIoUs[ind_class] * 100, 2)))
-        # print('===> mIoU: ' + str(round(np.nanmean(mIoUs) * 100, 2)))
-        return round(np.nanmean(mIoUs) * 100, 2), hist
-
     def add_batch(self, semantics_pred, semantics_gt, mask=None):
         self.cnt += 1
         if mask is not None:
-            masked_semantics_gt = semantics_gt[mask]
-            masked_semantics_pred = semantics_pred[mask]
-
-        if self.num_classes == 2:
-            masked_semantics_pred = np.copy(masked_semantics_pred)
-            masked_semantics_gt = np.copy(masked_semantics_gt)
-            masked_semantics_pred[masked_semantics_pred < 16] = 0
-            masked_semantics_pred[masked_semantics_pred == 16] = 1
-            masked_semantics_gt[masked_semantics_gt < 16] = 0
-            masked_semantics_gt[masked_semantics_gt == 16] = 1
+            semantics_pred = semantics_pred[mask]
+            semantics_gt = semantics_gt[mask]
         
-        _, _hist = self.compute_mIoU(masked_semantics_pred, masked_semantics_gt, self.num_classes)
-        self.hist += _hist
+        pred = semantics_pred.flatten()
+        binary_pred = pred.copy()
+        binary_pred[binary_pred < self.num_classes-1] = 0
+        binary_pred[binary_pred == self.num_classes-1] = 1
+
+        gt = semantics_gt.flatten()
+        binary_gt = gt.copy()
+        binary_gt[binary_gt < self.num_classes-1] = 0
+        binary_gt[binary_gt == self.num_classes-1] = 1
+        
+        self.hist += self.hist_info(self.num_classes, pred, gt)
+        self.bin_hist += self.hist_info(2, binary_pred, binary_gt)
 
     def count_miou(self):
         mIoU = self.per_class_iu(self.hist)
+        IoU = self.per_class_iu(self.bin_hist)
         # assert cnt == num_samples, 'some samples are not included in the miou calculation'
         print(f'===> per class IoU of {self.cnt} samples:')
         for ind_class in range(self.num_classes-1):
             print(f'===> {self.class_names[ind_class]} - IoU = ' + str(round(mIoU[ind_class] * 100, 2)))
 
         print(f'===> mIoU of {self.cnt} samples: ' + str(round(np.nanmean(mIoU[:self.num_classes-1]) * 100, 2)))
-        # print(f'===> sample-wise averaged mIoU of {cnt} samples: ' + str(round(np.nanmean(mIoU_avg), 2)))
+        print(f'===> IoU of {self.cnt} samples: ' + str(round(IoU[0] * 100, 2)))
 
-        return round(np.nanmean(mIoU[:self.num_classes-1]) * 100, 2)
+        return round(np.nanmean(mIoU[:self.num_classes-1]) * 100, 2), round(IoU[0] * 100, 2)

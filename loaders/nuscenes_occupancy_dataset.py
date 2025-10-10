@@ -12,7 +12,7 @@ from nuscenes.utils.geometry_utils import transform_matrix
 from torch.utils.data import DataLoader
 from models.utils import sparse2dense
 from .utils import compose_ego2img
-from .old_metrics import Metric_mIoU_OpenOcc
+from .old_metrics import Metric_mIoU_Occupancy
 
 
 @DATASETS.register_module()
@@ -88,6 +88,7 @@ class NuScenesOccupancyDataset(NuScenesDataset):
             lidar_token=info['lidar_token'],
             timestamp=info['timestamp'] / 1e6,
             ego2lidar=ego2lidar,
+            ego2obj=ego2lidar,
             ego2occ=ego2lidar,
             ego2global_translation=ego2global_translation,
             ego2global_rotation=ego2global_rotation_mat,
@@ -141,7 +142,7 @@ class NuScenesOccupancyDataset(NuScenesDataset):
         lidar_origins = []
 
         print('\nStarting Evaluation...')
-        metric = Metric_mIoU_OpenOcc()
+        metric = Metric_mIoU_Occupancy()
 
         occ_class_names = [
             'noise', 'barrier', 'bicycle', 'bus', 'car', 'construction_vehicle',
@@ -164,20 +165,22 @@ class NuScenesOccupancyDataset(NuScenesDataset):
             # load lidar and camera visible label
             occ_labels = np.load(occ_file)
             coors, labels = occ_labels[:, :3], occ_labels[:, 3]
-            occ_labels, _ = sparse2dense(coors[:, ::-1], labels, voxel_num, empty_value=16)
-            mask = occ_labels != 0
+            occ_labels, _ = sparse2dense(coors[:, ::-1], labels, voxel_num, empty_value=len(occ_class_names))
+            mask = occ_labels != 0 # ignore noise
 
             curr_class_names = [n for n in occ_class_names if n not in ignore_class_names]
+            curr_bg_class_idx = len(curr_class_names) # 16
             label_mapper = [curr_class_names.index(n) if n in curr_class_names else 16
-                            for n in occ_class_names]
+                            for n in occ_class_names] + [curr_bg_class_idx]
             label_mapper = np.array(label_mapper)
             occ_labels = label_mapper[occ_labels]
 
             occ_pred, _ = sparse2dense(result_dict['occ_loc'], result_dict['sem_pred'], voxel_num, 16)
             metric.add_batch(occ_pred, occ_labels, mask)
-        
-        return {'mIoU': metric.count_miou()}
-    
+
+        mIoU, IoU = metric.count_miou()
+        return {'mIoU': mIoU, 'IoU': IoU}
+
     def format_results(self, occ_results, submission_prefix, **kwargs):
         if submission_prefix is not None:
             mmcv.mkdir_or_exist(submission_prefix)

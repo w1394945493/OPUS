@@ -57,7 +57,7 @@ class LoadOccupancyFromFile:
             'motorcycle', 'pedestrian', 'traffic_cone', 'trailer', 'truck',
             'driveable_surface', 'other_flat', 'sidewalk', 'terrain', 'manmade', 'vegetation'
         ]
-
+    
     def __call__(self, results):
         scene_token, lidar_token = results['scene_token'], results['lidar_token']
         occ_file = osp.join(self.occ_root, f'scene_{scene_token}', 'occupancy', f'{lidar_token}.npy')
@@ -592,7 +592,7 @@ class LiDARToOccSpace:
         points = results['points']
         ego2lidar, ego2occ = results['ego2lidar'], results['ego2occ']
 
-        lidar2ego = torch.tensor(np.linalg.inv(ego2lidar)).float()
+        lidar2ego = torch.tensor(inv(ego2lidar)).float()
         lidar2occ = torch.tensor(ego2occ @ lidar2ego.numpy()).float()
         ones = torch.ones_like(points.tensor[..., :1])
         pts = torch.cat([points.tensor[..., :3], ones], dim=1).transpose(0, 1)
@@ -601,4 +601,38 @@ class LiDARToOccSpace:
         points.tensor = torch.cat([pts, points.tensor[..., 3:]], dim=1)
         results['points'] = points
         results['ego2lidar'] = ego2occ.copy()
+        return results
+
+
+@PIPELINES.register_module()
+class ObjectToOccSpace:
+    
+    def __call__(self, results):
+        ego2occ, ego2obj = results['ego2occ'], results['ego2obj']
+        if np.array_equal(ego2occ, ego2obj):
+            del results['ego2obj']
+            return results
+        
+        boxes = results['gt_bboxes_3d']
+        matrix = torch.from_numpy(ego2occ @ inv(ego2obj)).float()
+
+        ctr, dims, yaw = boxes.center, boxes.dims, boxes.yaw
+        velo = boxes.tensor[:, 7:9] if boxes.box_dim > 7 else torch.zeros_like(ctr[:, :2])
+
+        ones = torch.ones_like(ctr[:, :1])
+        ctr_ = torch.cat([ctr, ones], dim=-1)
+        ctr_ = (matrix @ ctr_.unsqueeze(-1)).squeeze(-1)[:, :3]
+
+        rot_matrix = matrix[:3, :3]
+        yaw_ = torch.stack([torch.cos(yaw), torch.sin(yaw), torch.zeros_like(yaw)], dim=-1)
+        yaw_ = (rot_matrix @ yaw_.unsqueeze(-1)).squeeze(-1)
+        yaw_ = torch.atan2(yaw_[:, [1]], yaw_[:, [0]])
+
+        velo_ = torch.cat([velo, torch.zeros_like(velo[:, :1])], dim=-1)
+        velo_ = (rot_matrix @ velo_.unsqueeze(-1)).squeeze(-1)[:, :2]
+
+        box_tensor = torch.cat([ctr_, dims, yaw_, velo_], dim=-1)
+        boxes = type(boxes)(box_tensor, box_dim=boxes.box_dim, with_yaw=boxes.with_yaw)
+        results['gt_bboxes_3d'] = boxes
+        del results['ego2obj'] # objects and occupancy are in the same space now
         return results
