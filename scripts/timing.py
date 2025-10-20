@@ -1,5 +1,9 @@
+import os
+import sys
+path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, path)
+
 import time
-import utils
 import logging
 import argparse
 import importlib
@@ -12,6 +16,20 @@ from mmcv.runner import load_checkpoint
 from mmdet.apis import set_random_seed
 from mmdet3d.datasets import build_dataset, build_dataloader
 from mmdet3d.models import build_model
+
+
+def init_logging(filename=None, debug=False):
+    logging.root = logging.RootLogger('DEBUG' if debug else 'INFO')
+    formatter = logging.Formatter('[%(asctime)s][%(levelname)s] - %(message)s')
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(formatter)
+    logging.root.addHandler(stream_handler)
+
+    if filename is not None:
+        file_handler = logging.FileHandler(filename)
+        file_handler.setFormatter(formatter)
+        logging.root.addHandler(file_handler)
 
 
 def main():
@@ -37,7 +55,7 @@ def main():
     from mmcv.utils.logging import logger_initialized
     logger_initialized['root'] = logging.Logger(__name__, logging.WARNING)
     logger_initialized['mmcv'] = logging.Logger(__name__, logging.WARNING)
-    utils.init_logging(None, cfgs.debug)
+    init_logging(None, cfgs.debug)
 
     # you need GPUs
     assert torch.cuda.is_available() and torch.cuda.device_count() == 1

@@ -1,4 +1,9 @@
 import os
+import sys
+path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, path)
+
+import os
 import cv2
 import argparse
 import importlib
@@ -7,6 +12,7 @@ import mayavi.mlab as mlab
 import torch
 import torch.backends.cudnn as cudnn
 import numpy as np
+import matplotlib as mpl
 from datetime import datetime
 from mmcv import Config, DictAction
 from mmcv.parallel import MMDataParallel
@@ -38,7 +44,10 @@ classname_to_color = {  # RGB.
     17: (140, 140, 140),  # Green vegetation
 }
 
-palette = np.array([classname_to_color[i] for i in range(len(classname_to_color))])
+occ3d_palette = np.array([classname_to_color[i] for i in range(len(classname_to_color))])
+agnostic_colormap = mpl.colormaps['viridis']
+agnostic_palette = (agnostic_colormap(np.linspace(0., 1., 40))[:, :3] * 255).astype(np.uint8)
+patch_range = [-40.0, -40.0, -1.0, 40.0, 40.0, 5.4]
 
 
 def decode_points(points, pc_range=[-40.0, -40.0, -1.0, 40.0, 40.0, 5.4]):
@@ -48,10 +57,17 @@ def decode_points(points, pc_range=[-40.0, -40.0, -1.0, 40.0, 40.0, 5.4]):
     points[..., 2] = points[..., 2] * (pc_range[5] - pc_range[2]) + pc_range[2]
     return points
 
-def visualize_occ(x, y, z, labels, palette, voxel_size, classes, mode='cube', color=None, show=False):
+
+def visualize_occ(x, y, z, labels, palette, voxel_size, classes=None, mode='cube', 
+                  color=None, vmin=None, vmax=None, show=False):
     if palette.shape[1] == 3:
         palette = np.concatenate([palette, np.ones((palette.shape[0], 1)) * 255], axis=1)
     fig = mlab.figure(size=(1000, 1000), bgcolor=(1, 1, 1))
+
+    if vmin is None:
+        vmin = 1.0
+    if vmax is None:
+        vmax = len(classes)-1 if isinstance(classes, list) else classes-1
     
     plot = mlab.points3d(x, y, z,
                          labels,
@@ -60,8 +76,8 @@ def visualize_occ(x, y, z, labels, palette, voxel_size, classes, mode='cube', co
                          mode=mode,
                          scale_mode = "vector",
                          opacity=1.0,
-                         vmin=1.0,
-                         vmax=len(classes)-1)
+                         vmin=vmin,
+                         vmax=vmax)
     plot.module_manager.scalar_lut_manager.lut.table = palette
     
     f = mlab.gcf()
@@ -75,15 +91,26 @@ def visualize_occ(x, y, z, labels, palette, voxel_size, classes, mode='cube', co
         return save_fig
 
 
+def filter_by_range(x, y, z, *others, range):
+    mask = (x >= range[0]) & (x <= range[3]) & \
+           (y >= range[1]) & (y <= range[4]) & \
+           (z >= range[2]) & (z <= range[5])
+    results = (x[mask], y[mask], z[mask])
+    if len(others) > 0:
+        for other in others:
+            results += (other[mask], )
+    return results
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Visualize results')
     parser.add_argument('--config', required=True, help='Path to config file')
     parser.add_argument('--weights', required=True, help='Path to checkpoint')
     parser.add_argument('--vis-input', action='store_true', help='Visualize inputs')
     parser.add_argument('--vis-gt', action='store_true', help='Visualize ground-truths')
+    parser.add_argument('--vis-raw-pts', action='store_true', help='Visualize raw points')
     parser.add_argument('--occ-file', default='data/nuscenes/gts/', help='Path to Occ3D')
     parser.add_argument('--save-dir', type=str, default='visualizations', help='Visualize results')
-    parser.add_argument('--with-postprocess', action='store_true', help='Results post-processing')
     parser.add_argument('--override', nargs='+', action=DictAction, help='Override config')
     args = parser.parse_args()
 
@@ -143,7 +170,6 @@ if __name__ == '__main__':
     vis_ndarray = []
     with torch.no_grad():
         for i, data in enumerate(val_loader):
-
             # Visualize input data
             if args.vis_input:
                 images = data['img'][0].data[0].cpu().numpy()[0, :6]
@@ -169,52 +195,70 @@ if __name__ == '__main__':
             # Visualize ground-truths
             if args.vis_gt:
                 scene_name = val_dataset.data_infos[i]['scene_name']
-                token = val_dataset.data_infos[i]['scene_name']
-                occ_file = osp.join(args.occ_root, scene_name, token, 'labels.npz')
+                token = val_dataset.data_infos[i]['token']
+                occ_file = osp.join(args.occ_file, scene_name, token, 'labels.npz')
                 occ = np.load(occ_file)['semantics']
                 x, y, z = xx[occ!=17], yy[occ!=17], zz[occ!=17]
                 label = occ[occ!=17].astype(np.int64)
+                x, y, z, label = filter_by_range(x, y, z, label, range=patch_range)
                 img = visualize_occ(
                     x, y, z,
                     label,
-                    palette,
+                    occ3d_palette,
                     0.4,
                     list(classname_to_color.keys()),
                     show=False)
                 cv2.imwrite(osp.join(work_dir, f'{i:0>6}_gt.jpg'), img[..., ::-1])
 
-            if args.with_postprocess:
-                result = model(return_loss=False, rescale=True, **data)
-                label, pos = result[0]['sem_pred'], result[0]['occ_loc']
-                x = xx[pos[:, 0], pos[:, 1], pos[:, 2]]
-                y = yy[pos[:, 0], pos[:, 1], pos[:, 2]]
-                z = zz[pos[:, 0], pos[:, 1], pos[:, 2]]
-                img = visualize_occ(
-                    x, y, z,
-                    label,
-                    palette,
-                    0.4,
-                    list(classname_to_color.keys()),
-                    show=False)
-                cv2.imwrite(osp.join(work_dir, f'{i:0>6}_result.jpg'), img[..., ::-1])
-            else:
+            if args.vis_raw_pts:
                 img, img_metas = data['img'][0].data[0], data['img_metas'][0].data[0]
                 _model = model.module
                 img_feats = _model.extract_feat(img=img.cuda(), img_metas=img_metas)
                 outs = _model.pts_bbox_head(img_feats, img_metas)
 
-                cls_scores = outs['all_cls_scores'][-1].reshape(-1, 17)
-                cls_scores = cls_scores.detach().cpu().numpy()
-                label = cls_scores.argmax(axis=-1)
                 refine_pts = outs['all_refine_pts'][-1].reshape(-1, 3)
                 refine_pts = refine_pts.detach().cpu().numpy()
                 refine_pts = decode_points(refine_pts, scene_range)
+
+                cls_scores = outs['all_cls_scores'][-1]
+                if cls_scores is None or cls_scores.ndim == 2:
+                    label = (refine_pts[:, 2] - patch_range[2]) / (patch_range[5] - patch_range[2])
+                    palette = agnostic_palette
+                    vmin=0.05
+                    vmax=0.95
+                elif cls_scores.ndim == 4:
+                    cls_scores = cls_scores.reshape(-1, 17)
+                    cls_scores = cls_scores.detach().cpu().numpy()
+                    label = cls_scores.argmax(axis=-1)
+                    palette = occ3d_palette
+                    vmin=1.0
+                    vmax=17.0
+                else:
+                    raise NotImplementedError
+
                 x, y, z = refine_pts[:, 0], refine_pts[:, 1], refine_pts[:, 2]
+                x, y, z, label = filter_by_range(x, y, z, label, range=patch_range)
                 img = visualize_occ(
                     x, y, z,
                     label,
                     palette,
                     0.4,
-                    list(classname_to_color.keys()),
+                    vmin=vmin,
+                    vmax=vmax,
                     show=False)
-                cv2.imwrite(osp.join(work_dir, f'{i:0>6}_result.jpg'), img[..., ::-1])
+                cv2.imwrite(osp.join(work_dir, f'{i:0>6}_raw_pts.jpg'), img[..., ::-1])
+
+            result = model(return_loss=False, rescale=True, **data)
+            label, pos = result[0]['sem_pred'], result[0]['occ_loc']
+            x = xx[pos[:, 0], pos[:, 1], pos[:, 2]]
+            y = yy[pos[:, 0], pos[:, 1], pos[:, 2]]
+            z = zz[pos[:, 0], pos[:, 1], pos[:, 2]]
+            x, y, z, label = filter_by_range(x, y, z, label, range=patch_range)
+            img = visualize_occ(
+                x, y, z,
+                label,
+                occ3d_palette,
+                0.4,
+                list(classname_to_color.keys()),
+                show=False)
+            cv2.imwrite(osp.join(work_dir, f'{i:0>6}_result.jpg'), img[..., ::-1])
