@@ -1,6 +1,6 @@
 <div align="center">
 
-# OPUS: Occupancy Prediction Using a Sparse Set (NeurIPS 2024)
+# OPUS: Occupancy Prediction Using a Sparse Set
 </div>
 
 ![demo](demos/teaser.png)
@@ -12,9 +12,17 @@
 > [Jie Yang](http://www.pami.sjtu.edu.cn/jieyang),
 > [Wei Liu](http://www.pami.sjtu.edu.cn/weiliu),
 > [Qibin Hou#](https://houqb.github.io/),
-> [Ming-Ming Cheng](https://mmcheng.net/cmm/) \
+> [Ming-Ming Cheng](https://mmcheng.net/cmm/)
+> - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233) \
+
+> **OPUS-V2: Bridging the Gap between Continuous and Discrete Occupancy**
+> - Authors: [Jiabao Wang*](https://jbwang1997.github.io/),
+> [Qiang Meng](https://irvingmeng.github.io/), Liujiang Yan, Ke Wang,
+> [Qibin Hou#](https://houqb.github.io/),
+> [Ming-Ming Cheng](https://mmcheng.net/cmm/)
+<!-- > - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233) \ -->
+
 > (* Equal contribition, # Corresponding author)
-> - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233)
 
 ## News
 
@@ -38,23 +46,341 @@ Finally, compared with current state-of-the-art methods, our lightest model achi
 
 ## Model Zoo
 
-**Camera only OPUSV1 on NuScene-Occ3D dataest**
+![result](demos/result.png)
 
-| Models                                          | Epochs |  *Q* | *P* | mIoU | RayIoU<sub>1m</sub> | RayIoU<sub>2m</sub> | RayIoU<sub>4m</sub> | RayIoU |  FPS | Link |
-|:-----------------------------------------------:|:------:|:----:|:---:|:----:|:-------------------:|:-------------------:|:-------------------:|:------:|:----:|:----:|
-| [OPUSV1-T](configs/opusv1_nusc-occ3d/opusv1-t_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 600  | 128 | 33.2 |         31.7        |         39.2        |         44.3        |  38.4  | 22.4 | [Model](https://huggingface.co/jbwang1997/OPUS) |
-| [OPUSV1-S](configs/opusv1_nusc-occ3d/opusv1-s_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 1200 | 64  | 34.2 |         32.6        |         39.9        |         44.7        |  39.1  | 20.7 | [Model](https://huggingface.co/jbwang1997/OPUS) |
-| [OPUSV1-M](configs/opusv1_nusc-occ3d/opusv1-m_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 2400 | 32  | 35.6 |         33.7        |         41.1        |         46.0        |  40.3  | 13.4 | [Model](https://huggingface.co/jbwang1997/OPUS) |
-| [OPUSV1-L](configs/opusv1_nusc-occ3d/opusv1-l_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 4800 | 16  | 36.2 |         34.7        |         42.1        |         46.7        |  41.2  |  7.2 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+<details>
+<summary>Camera only OPUS-V2 on NuScene-Occ3D dataset</summary>
+<table>
+    <tr>
+        <td>Models</td>
+        <td>Epochs</td>
+        <td><i>Q</i></td>
+        <td><i>P</i></td>
+        <td>mIoU</td>
+        <td>RayIoU1m</td>
+        <td>RayIoU2m</td>
+        <td>RayIoU4m</td>
+        <td>RayIoU</td>
+        <td>FPS</td>
+        <td>Link</td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occ3d/opusv2-t_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V2-T</a></td>
+        <td>100</td>
+        <td>600</td>
+        <td>128</td>
+        <td>36.5</td>
+        <td>35.8</td>
+        <td>42.8</td>
+        <td>47.3</td>
+        <td>42.0</td>
+        <td>25.8</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occ3d/opusv2-s_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V2-S</a></td>
+        <td>100</td>
+        <td>1200</td>
+        <td>64</td>
+        <td>37.3</td>
+        <td>36.7</td>
+        <td>43.5</td>
+        <td>47.8</td>
+        <td>42.7</td>
+        <td>23.7</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occ3d/opusv2-m_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V2-M</a></td>
+        <td>100</td>
+        <td>2400</td>
+        <td>32</td>
+        <td>37.7</td>
+        <td>37.2</td>
+        <td>44.3</td>
+        <td>48.5</td>
+        <td>43.3</td>
+        <td>16.0</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occ3d/opusv2-l_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V2-L</a></td>
+        <td>100</td>
+        <td>4800</td>
+        <td>16</td>
+        <td>38.6</td>
+        <td>38.0</td>
+        <td>45.0</td>
+        <td>49.2</td>
+        <td>44.0</td>
+        <td>8.6</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+</table>
+</details>
 
-**Camera Lidar fusion OPUSV1 on NuScene-Occ3D dataset**
+<details>
+<summary>Camera only OPUS-V2 on NuScene-OpenOccupancy dataset</summary>
+<table>
+    <tr>
+        <td>Models</td>
+        <td>IoU</td>
+        <td>MIoU</td>
+        <td>barrier</td>
+        <td>bicycle</td>
+        <td>bus</td>
+        <td>car</td>
+        <td>const. veh.</td>
+        <td>motorcycle</td>
+        <td>pedestrian</td>
+        <td>traffic cone</td>
+        <td>trailer</td>
+        <td>truck</td>
+        <td>drive. suf.</td>
+        <td>other flat</td>
+        <td>sidewalk</td>
+        <td>terrain</td>
+        <td>manmade</td>
+        <td>vegetation</td>
+        <td>FPS</td>
+        <td>Link</td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occupancy/opusv2-t_r50_704x256_8f_nusc-occupancy_50e.py">OPUS-V2-T</a></td>
+        <td>27.4</td>
+        <td>16.4</td>
+        <td>17.5</td>
+        <td>7.5</td>
+        <td>16.2</td>
+        <td>18.9</td>
+        <td>10.4</td>
+        <td>11.7</td>
+        <td>6.9</td>
+        <td>6.5</td>
+        <td>8.2</td>
+        <td>14.9</td>
+        <td>39.3</td>
+        <td>27.3</td>
+        <td>25.4</td>
+        <td>23.2</td>
+        <td>11.7</td>
+        <td>16.4</td>
+        <td>20.6</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occupancy/opusv2-s_r50_704x256_8f_nusc-occupancy_50e.py">OPUS-V2-S</a></td>
+        <td>27.6</td>
+        <td>16.7</td>
+        <td>17.0</td>
+        <td>9.1</td>
+        <td>15.8</td>
+        <td>19.2</td>
+        <td>10.1</td>
+        <td>12.7</td>
+        <td>8.1</td>
+        <td>8.0</td>
+        <td>8.1</td>
+        <td>14.9</td>
+        <td>39.6</td>
+        <td>27.0</td>
+        <td>25.8</td>
+        <td>23.8</td>
+        <td>11.6</td>
+        <td>16.6</td>
+        <td>19.2</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occupancy/opusv2-m_r50_704x256_8f_nusc-occupancy_50e.py">OPUS-V2-M</a></td>
+        <td>27.9</td>
+        <td>17.4</td>
+        <td>18.5</td>
+        <td>11.2</td>
+        <td>15.9</td>
+        <td>19.5</td>
+        <td>10.5</td>
+        <td>13.8</td>
+        <td>9.4</td>
+        <td>9.3</td>
+        <td>8.2</td>
+        <td>15.3</td>
+        <td>39.8</td>
+        <td>27.5</td>
+        <td>26.2</td>
+        <td>23.8</td>
+        <td>12.4</td>
+        <td>17.1</td>
+        <td>13.7</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occupancy/opusv2-l_r50_704x256_8f_nusc-occupancy_50e.py">OPUS-V2-L</a></td>
+        <td>28.7</td>
+        <td>18.1</td>
+        <td>19.3</td>
+        <td>11.5</td>
+        <td>16.4</td>
+        <td>19.9</td>
+        <td>11.8</td>
+        <td>15.0</td>
+        <td>10.0</td>
+        <td>10.6</td>
+        <td>8.4</td>
+        <td>15.8</td>
+        <td>39.9</td>
+        <td>27.7</td>
+        <td>26.8</td>
+        <td>24.5</td>
+        <td>13.9</td>
+        <td>18.0</td>
+        <td>8.0</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+</table>
+</details>
 
-| Models                                                          | Epochs |  *Q* | *P* | mIoU | RayIoU<sub>1m</sub> | RayIoU<sub>2m</sub> | RayIoU<sub>4m</sub> | RayIoU |  FPS | Link |
-|:---------------------------------------------------------------:|:------:|:----:|:---:|:----:|:-------------------:|:-------------------:|:-------------------:|:------:|:----:|:----:|
-| [OPUSV1-Fusion-T](configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-t_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 600  | 128 | 48.7 |         45.4        |         50.3        |         53.3        |  49.7  | 10.2 | [Model](https://huggingface.co/jbwang1997/OPUS) |
-| [OPUSV1-Fusion-S](configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-s_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 1200 | 64  | 49.6 |         45.9        |         51.0        |         54.1        |  50.4  |  9.5 | [Model](https://huggingface.co/jbwang1997/OPUS) |
-| [OPUSV1-Fusion-M](configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-m_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 2400 | 32  | 50.5 |         46.4        |         51.2        |         54.2        |  50.6  |  6.9 | [Model](https://huggingface.co/jbwang1997/OPUS) |
-| [OPUSV1-Fusion-L](configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-l_r50_704x256_8f_nusc-occ3d_100e.py) |   100  | 4800 | 16  | 51.4 |         47.6        |         52.4        |         55.3        |  51.8  |  3.2 | [Model](https://huggingface.co/jbwang1997/OPUS) |
+<details>
+<summary>Camera Lidar fusion OPUS-V1 on NuScene-Occ3D dataset</summary>
+<table>
+    <tr>
+        <td>Models</td>
+        <td>Epochs</td>
+        <td><i>Q</i></td>
+        <td><i>P</i></td>
+        <td>mIoU</td>
+        <td>RayIoU1m</td>
+        <td>RayIoU2m</td>
+        <td>RayIoU4m</td>
+        <td>RayIoU</td>
+        <td>FPS</td>
+        <td>Link</td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-t_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V1-Fus-T</a></td>
+        <td>100</td>
+        <td>600</td>
+        <td>128</td>
+        <td>48.7</td>
+        <td>45.4</td>
+        <td>50.3</td>
+        <td>53.3</td>
+        <td>49.7</td>
+        <td>10.2</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-s_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V1-Fus-S</a></td>
+        <td>100</td>
+        <td>1200</td>
+        <td>64</td>
+        <td>49.6</td>
+        <td>45.9</td>
+        <td>51.0</td>
+        <td>54.1</td>
+        <td>50.4</td>
+        <td>9.5</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-m_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V1-Fus-M</a></td>
+        <td>100</td>
+        <td>2400</td>
+        <td>32</td>
+        <td>50.5</td>
+        <td>46.4</td>
+        <td>51.2</td>
+        <td>54.2</td>
+        <td>50.6</td>
+        <td>6.9</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv1-fusion_nusc-occ3d/opusv1-fusion-l_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V1-Fus-L</a></td>
+        <td>100</td>
+        <td>4800</td>
+        <td>16</td>
+        <td>51.4</td>
+        <td>47.6</td>
+        <td>52.4</td>
+        <td>55.3</td>
+        <td>51.8</td>
+        <td>3.2</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+</table>
+</details>
+
+<details>
+<summary>Camera only OPUS-V1 on NuScene-Occ3D dataest</summary>
+<table>
+    <tr>
+        <td>Models</td>
+        <td>Epochs</td>
+        <td><i>Q</i></td>
+        <td><i>P</i></td>
+        <td>mIoU</td>
+        <td>RayIoU1m</td>
+        <td>RayIoU2m</td>
+        <td>RayIoU4m</td>
+        <td>RayIoU</td>
+        <td>FPS</td>
+        <td>Link</td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv1_nusc-occ3d/opusv1-t_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V1-T</a></td>
+        <td>100</td>
+        <td>600</td>
+        <td>128</td>
+        <td>33.2</td>
+        <td>31.7</td>
+        <td>39.2</td>
+        <td>44.3</td>
+        <td>38.4</td>
+        <td>22.4</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv1_nusc-occ3d/opusv1-s_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V1-S</a></td>
+        <td>100</td>
+        <td>1200</td>
+        <td>64</td>
+        <td>34.2</td>
+        <td>32.6</td>
+        <td>39.9</td>
+        <td>44.7</td>
+        <td>39.1</td>
+        <td>20.7</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv1_nusc-occ3d/opusv1-m_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V1-M</a></td>
+        <td>100</td>
+        <td>2400</td>
+        <td>32</td>
+        <td>35.6</td>
+        <td>33.7</td>
+        <td>41.1</td>
+        <td>46.0</td>
+        <td>40.3</td>
+        <td>13.4</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv1_nusc-occ3d/opusv1-l_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V1-L</a></td>
+        <td>100</td>
+        <td>4800</td>
+        <td>16</td>
+        <td>36.2</td>
+        <td>34.7</td>
+        <td>42.1</td>
+        <td>46.7</td>
+        <td>41.2</td>
+        <td>7.2</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+</table>
+</details>
 
 **note: *Q* denotes query numbers. *P* is the number of predicted points per query.**
 
@@ -101,9 +427,11 @@ python setup.py build_ext --inplace
 
 1. Download nuScenes from [https://www.nuscenes.org/nuscenes](https://www.nuscenes.org/nuscenes) and place it in folder `data/nuscenes`.
 
-2. Download Occ3d-nuScenes from [https://tsinghua-mars-lab.github.io/Occ3D/](https://tsinghua-mars-lab.github.io/Occ3D/) and place it in `data/nuscenes/gts`
+2. (Optional) Download Occ3d-nuScenes from the [link](https://tsinghua-mars-lab.github.io/Occ3D/) and place it in `data/nuscenes/gts`
 
-3. Prepare data with scripts provided by mmdet3d:
+3. (Optional) Download Occ3d-OpenOccupancy from the [link](https://github.com/JeffWang987/OpenOccupancy/blob/main/docs/prepare_data.md) and place it in `data/nuscenes/occupancy`
+
+4. Prepare data with scripts provided by mmdet3d:
 
 ```
 mim run mmdet3d create_data nuscenes --root-path ./data/nuscenes --out-dir ./data/nuscenes --extra-tag nuscenes
@@ -127,6 +455,8 @@ data/nuscenes
 ├── nuscenes_infos_val_mini_sweep.pkl
 ├── samples
 ├── sweeps
+├── gts       % Occ3D dataset (Optional)
+├── occupancy % OpenOccupancy dataset (Optional)
 ├── v1.0-test
 └── v1.0-trainval
 ```
