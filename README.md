@@ -3,7 +3,6 @@
 # OPUS: Occupancy Prediction Using a Sparse Set
 </div>
 
-![demo](demos/teaser.png)
 
 > **OPUS: Occupancy Prediction Using a Saprse Set**
 > - Authors: [Jiabao Wang*](https://jbwang1997.github.io/),
@@ -13,14 +12,14 @@
 > [Wei Liu](http://www.pami.sjtu.edu.cn/weiliu),
 > [Qibin Hou#](https://houqb.github.io/),
 > [Ming-Ming Cheng](https://mmcheng.net/cmm/)
-> - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233) \
+> - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233)
 
 > **OPUS-V2: Bridging the Gap between Continuous and Discrete Occupancy**
 > - Authors: [Jiabao Wang*](https://jbwang1997.github.io/),
 > [Qiang Meng](https://irvingmeng.github.io/), Liujiang Yan, Ke Wang,
 > [Qibin Hou#](https://houqb.github.io/),
 > [Ming-Ming Cheng](https://mmcheng.net/cmm/)
-<!-- > - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233) \ -->
+> - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233)
 
 > (* Equal contribition, # Corresponding author)
 
@@ -32,17 +31,46 @@
 - [2024/09/26]: &#x1F680;OPUS is accepeted by NeurIPS 2024.
 - [2024/09/17]: &#x1F680;We release an initial version of OPUS. It achieves promising performance of 41.2 RayIoU and 36.2 mIoU on the NuScene-Occ3D dataset.
 
+## Introduction
+
 <details>
-<summary>Abstract</summary>
+<summary>OPUS: Occupancy Prediction Using a Sparse Set</summary>
 Occupancy prediction, aiming at predicting the occupancy status within voxelized 3D environment, is quickly gaining momentum within the autonomous driving community.
 Mainstream occupancy prediction works first discretize the 3D environment into voxels, then perform classification on such dense grids. However, inspection on sample data reveals that the vast majority of voxels is unoccupied. Performing classification on these empty voxels demands suboptimal computation resource allocation, and reducing such empty voxels necessitates complex algorithm designs.
 To this end, we present a novel perspective on the occupancy prediction task: formulating it as a streamlined set prediction paradigm without the need for explicit space modeling or complex sparsification procedures.
-Our proposed framework, called **OPUS**, utilizes a transformer encoder-decoder architecture to simultaneously predict occupied locations and classes using a set of learnable queries.
+Our proposed framework, called OPUS, utilizes a transformer encoder-decoder architecture to simultaneously predict occupied locations and classes using a set of learnable queries.
 Firstly, we employ the Chamfer distance loss to scale the set-to-set comparison problem to unprecedented magnitudes, making training such model end-to-end a reality.
 Subsequently, semantic classes are adaptively assigned using nearest neighbor search based on the learned locations.
 In addition, OPUS incorporates a suite of non-trivial strategies to enhance model performance, including coarse-to-fine learning, consistent point sampling, and adaptive re-weighting, etc.
-Finally, compared with current state-of-the-art methods, our lightest model achieves superior RayIoU on the Occ3D-nuScenes dataset at near $2\times$ FPS, while our heaviest model surpasses previous best results by 6.1 RayIoU. 
+Finally, compared with current state-of-the-art methods, our lightest model achieves superior RayIoU on the Occ3D-nuScenes dataset at near 2X FPS, while our heaviest model surpasses previous best results by 6.1 RayIoU. 
+<img src="demos/opusv1.png" alt="OPUS">
 </details>
+
+<details>
+<summary>OPUS-V2: Bridge the Gap between Continuous and Discrete Occupancy</summary>
+State-of-the-art occupancy prediction methods often achieve high accuracy at the cost of significant computational expense, thus hindering their spatial extension.
+While the recent OPUS framework introduced an efficient point-set prediction paradigm, its accuracy trails behind more complex models. 
+In this paper, we identify a representation gap problem of OPUS between its continuous predictions and the discrete ground-truth voxels.
+This gap necessitates manually constructed intermediates, which introduce training instability and additional errors.
+To mitigate this problem, this paper proposes OPUS-V2, which incorporates a lightweight Continuous Prediction Discretization (CPD) module behind the decoder.
+The CPD adaptively maps continuous predictions into the discrete voxel space, obviating the need for suboptimal handcrafted intermediates and thereby enhancing model accuracy.
+Furthermore, our architecture decouples the feature and occupancy generation processes, allowing OPUS-V2 to adapt to arbitrary resolutions. 
+OPUS-V2 achieves a state-of-the-art RayIoU of 44.0 on the Occ3D dataset.
+On the more challenging OpenOccupancy dataset, it attains a competitive 16.4 mIoU while running at a real-time 20.6 FPS.
+<img src="demos/opusv2.png" alt="OPUS-V2">
+</details>
+
+## Results
+
+### Comparison between different type of predictions
+
+![demo](demos/teaser.png)
+
+### Occupancy prediction in long term.
+
+<video width="100%" controls>
+  <source src="https://github.com/user-attachments/assets/1ffe3ddb-15a0-4fe8-9fc8-33e55678e735" type="video/mp4">
+</video>
 
 ## Model Zoo
 
