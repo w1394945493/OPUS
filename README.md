@@ -62,15 +62,13 @@ On the more challenging OpenOccupancy dataset, it attains a competitive 16.4 mIo
 
 ## Results
 
-### Comparison between different type of predictions
+- Comparison between different type of predictions
 
 ![demo](demos/teaser.png)
 
-### Occupancy prediction in long term.
+- Occupancy prediction in long term.
 
-<video width="100%" controls>
-  <source src="https://github.com/user-attachments/assets/1ffe3ddb-15a0-4fe8-9fc8-33e55678e735" type="video/mp4">
-</video>
+https://github.com/user-attachments/assets/b08ebc14-a997-4734-a8b7-cb8f51b0b328
 
 ## Model Zoo
 
