@@ -68,7 +68,7 @@ On the more challenging OpenOccupancy dataset, it attains a competitive 16.4 mIo
 
 - Occupancy prediction in long term.
 
-https://github.com/user-attachments/assets/b08ebc14-a997-4734-a8b7-cb8f51b0b328
+https://github.com/user-attachments/assets/f75b54db-a05e-4316-9ba8-9a7e5dbbbf3f
 
 ## Model Zoo
 
