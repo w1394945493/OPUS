@@ -12,24 +12,25 @@
 > [Wei Liu](http://www.pami.sjtu.edu.cn/weiliu),
 > [Qibin Hou#](https://houqb.github.io/),
 > [Ming-Ming Cheng](https://mmcheng.net/cmm/)
-> - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233)
+> | [arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233)
 
 > **OPUS-V2: Bridging the Gap between Continuous and Discrete Occupancy**
 > - Authors: [Jiabao Wang*](https://jbwang1997.github.io/),
 > [Qiang Meng](https://irvingmeng.github.io/), Liujiang Yan, Ke Wang,
 > [Qibin Hou#](https://houqb.github.io/),
 > [Ming-Ming Cheng](https://mmcheng.net/cmm/)
-> - [Paper in arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/721102233)
+> | [arXiv](https://arxiv.org/pdf/2409.09350) | [知乎](https://zhuanlan.zhihu.com/p/1960850122750550870)
 
 > (* Equal contribition, # Corresponding author)
 
 ## News
 
+- [2026/01/06]: &#x1F680; We release the code and model of OPUS-V2, achieving 38.6 mIoU and 44.0 RayIoU on the NuScene-Occ3D dataset. The [Jittor](https://github.com/Jittor/jittor) version of OPUS is also under implementation. &#x1F680;&#x1F680;&#x1F680; please stay tuned. 
 - [2025/09/18]: We release the pretrained models of OPUS-Fusion.
-- [2025/02/10]: &#x1F680;We release the fusion version of OPUS. The performance has been boosted to 51.4 mIoU and 51.8 RayIoU on the NuScene-Occ3D dataset.
+- [2025/02/10]: &#x1F680; We release the fusion version of OPUS. The performance has been boosted to 51.4 mIoU and 51.8 RayIoU on the NuScene-Occ3D dataset.
 - [2025/01/10]: We release the visualization code.
-- [2024/09/26]: &#x1F680;OPUS is accepeted by NeurIPS 2024.
-- [2024/09/17]: &#x1F680;We release an initial version of OPUS. It achieves promising performance of 41.2 RayIoU and 36.2 mIoU on the NuScene-Occ3D dataset.
+- [2024/09/26]: &#x1F680; OPUS is accepeted by NeurIPS 2024.
+- [2024/09/17]: &#x1F680; We release an initial version of OPUS. It achieves promising performance of 41.2 RayIoU and 36.2 mIoU on the NuScene-Occ3D dataset.
 
 ## Introduction
 
