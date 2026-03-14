@@ -25,6 +25,7 @@
 
 ## News
 
+- [2026/03/14]: We replace the original CD loss in OPUSv2 with [DCD loss](https://github.com/wutong16/Density_aware_Chamfer_Distance), which can slightly boost the model performance. The config can be found at [here](configs/opusv2_nusc-occ3d/opusv2-t_r50_704x256_8f_dcdloss_nusc-occ3d_50e.py).
 - [2026/01/06]: &#x1F680; We release the code and model of OPUS-V2, achieving 38.6 mIoU and 44.0 RayIoU on the NuScene-Occ3D dataset. The [Jittor](https://github.com/Jittor/jittor) version of OPUS is also under implementation. &#x1F680;&#x1F680;&#x1F680; please stay tuned. 
 - [2025/09/18]: We release the pretrained models of OPUS-Fusion.
 - [2025/02/10]: &#x1F680; We release the fusion version of OPUS. The performance has been boosted to 51.4 mIoU and 51.8 RayIoU on the NuScene-Occ3D dataset.
@@ -74,6 +75,48 @@ https://github.com/user-attachments/assets/f75b54db-a05e-4316-9ba8-9a7e5dbbbf3f
 ## Model Zoo
 
 ![result](demos/result.png)
+
+<details>
+<summary>OPUS-V2 with different point losses on NuScene-Occ3D dataset</summary>
+<table>
+    <tr>
+        <td>Models</td>
+        <td>Epochs</td>
+        <td>Loss</td>
+        <td>mIoU</td>
+        <td>RayIoU1m</td>
+        <td>RayIoU2m</td>
+        <td>RayIoU4m</td>
+        <td>RayIoU</td>
+        <td>FPS</td>
+        <td>Link</td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occ3d/opusv2-t_r50_704x256_8f_nusc-occ3d_100e.py">OPUS-V2-T</a></td>
+        <td>50</td>
+        <td>CD</td>
+        <td>35.6</td>
+        <td>34.6</td>
+        <td>41.7</td>
+        <td>46.5</td>
+        <td>41.0</td>
+        <td>25.8</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+    <tr>
+        <td><a href="configs/opusv2_nusc-occ3d/opusv2-t_r50_704x256_8f_dcdloss_nusc-occ3d_50e.py">OPUS-V2-T</a></td>
+        <td>50</td>
+        <td>DCD</td>
+        <td>36.1</td>
+        <td>35.4</td>
+        <td>42.5</td>
+        <td>47.0</td>
+        <td>41.7</td>
+        <td>25.8</td>
+        <td><a href="https://huggingface.co/jbwang1997/OPUS">Model</a></td>
+    </tr>
+</table>
+</details>
 
 <details>
 <summary>Camera only OPUS-V2 on NuScene-Occ3D dataset</summary>
@@ -422,18 +465,23 @@ conda activate opus
 conda install pytorch==1.13.1 torchvision==0.14.1 pytorch-cuda=11.6 -c pytorch -c nvidia
 ```
 
-Install other dependencies:
+Install MM dependencies:
 
 ```
-pip install spconv-cu118  # Change the cuda version
 pip install openmim
 mim install mmcv-full==1.6.0
 mim install mmdet==2.28.2
 mim install mmsegmentation==0.30.0
 mim install mmdet3d==1.0.0rc6
 ```
+Install other dependencies:
+```
+pip install spconv-cu116  # Change the cuda version
+pip install torch-scatter -f https://data.pyg.org/whl/torch-{Version}+${CUDA}.html # Change the torch and cuda version
+pip install fvore einops
+```
 
-Install turbojpeg and pillow-simd to speed up data loading (optional but important):
+Install turbojpeg and pillow-simd to speed up data loading (optional):
 
 ```
 sudo apt-get update
