@@ -397,24 +397,30 @@ class RandomTransformOcc:
         bda_mat[:3, :3] = M
         
         semantics = results['voxel_semantics']
-        mask_lidar = results['mask_lidar']
-        mask_camera = results['mask_camera']
         if rotate_bda != 0 or scale_bda != 1.0:
             semantics = self.affine(semantics, rotate_bda, scale_bda, fill=17)
-            mask_lidar = self.affine(mask_lidar, rotate_bda, scale_bda, fill=False)
-            mask_camera = self.affine(mask_camera, rotate_bda, scale_bda, fill=False)
         if flip_dx:
             semantics = semantics[::-1, ...]
-            mask_lidar = mask_lidar[::-1, ...]
-            mask_camera = mask_camera[::-1, ...]
         if flip_dy:
             semantics = semantics[:, ::-1, ...]
-            mask_lidar = mask_lidar[:, ::-1, ...]
-            mask_camera = mask_camera[:, ::-1, ...]
         
         results['voxel_semantics'] = semantics.copy()
-        results['mask_lidar'] = mask_lidar.copy()
-        results['mask_camera'] = mask_camera.copy()
         results['ego2occ'] = bda_mat @ results['ego2occ']
+
+        if 'mask_lidar' in results:
+            mask_lidar = results['mask_lidar']
+            mask_camera = results['mask_camera']
+            if rotate_bda != 0 or scale_bda != 1.0:
+                mask_lidar = self.affine(mask_lidar, rotate_bda, scale_bda, fill=False)
+                mask_camera = self.affine(mask_camera, rotate_bda, scale_bda, fill=False)
+            if flip_dx:
+                mask_lidar = mask_lidar[::-1, ...]
+                mask_camera = mask_camera[::-1, ...]
+            if flip_dy:
+                mask_lidar = mask_lidar[:, ::-1, ...]
+                mask_camera = mask_camera[:, ::-1, ...]
+
+            results['mask_lidar'] = mask_lidar.copy()
+            results['mask_camera'] = mask_camera.copy()
 
         return results

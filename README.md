@@ -478,7 +478,7 @@ Install other dependencies:
 ```
 pip install spconv-cu116  # Change the cuda version
 pip install torch-scatter -f https://data.pyg.org/whl/torch-{Version}+${CUDA}.html # Change the torch and cuda version
-pip install fvore einops
+pip install fvcore einops
 ```
 
 Install turbojpeg and pillow-simd to speed up data loading (optional):
