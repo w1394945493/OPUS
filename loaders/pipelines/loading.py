@@ -196,11 +196,13 @@ class LoadMultiViewImageFromMultiSweeps:
         if self.sweeps_num == 0:
             return results
 
-        world_size = get_dist_info()[1]
-        if world_size == 1 and self.test_mode and (not self.force_offline):
-            return self.load_online(results)
-        else:
-            return self.load_offline(results)
+        # world_size = get_dist_info()[1]
+        # if world_size == 1 and self.test_mode and (not self.force_offline):
+        #     return self.load_online(results)
+        # else:
+        #     return self.load_offline(results)
+        
+        return self.load_offline(results)
 
 
 @PIPELINES.register_module()

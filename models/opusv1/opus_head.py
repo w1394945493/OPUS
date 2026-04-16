@@ -72,15 +72,15 @@ class OPUSV1Head(BaseModule):
         self.transformer.init_weights()
 
     def forward(self, mlvl_feats, img_metas):
-        B, Q, = mlvl_feats[0].shape[0], self.num_query
-        init_points = self.init_points.weight[None, :, None, :].repeat(B, 1, 1, 1)
-        query_feat = init_points.new_zeros(B, Q, self.embed_dims)
+        B, Q, = mlvl_feats[0].shape[0], self.num_query # self.num_query: 1200
+        init_points = self.init_points.weight[None, :, None, :].repeat(B, 1, 1, 1) # (1 1200 1 3)
+        query_feat = init_points.new_zeros(B, Q, self.embed_dims)                  # (1 1200 256)
 
         cls_scores, refine_pts = self.transformer(
-            init_points,
-            query_feat,
-            mlvl_feats,
-            img_metas=img_metas,
+            init_points,                   # (1 1200 1 3)
+            query_feat,                    # (1 1200 256)
+            mlvl_feats,                    # 4:(1, 48, 256, 64, 176) (1, 48, 256, 32, 88) (1, 48, 256, 16, 44) (1, 48, 256, 8, 22)
+            img_metas=img_metas,           # 应包含的键：'ego2img' 'ego2occ'
         )
 
         return dict(init_points=init_points,
@@ -235,53 +235,53 @@ class OPUSV1Head(BaseModule):
         return loss_dict
     
     def get_occ(self, pred_dicts, img_metas, rescale=False):
-        all_cls_scores = pred_dicts['all_cls_scores']
-        all_refine_pts = pred_dicts['all_refine_pts']
-        cls_scores = all_cls_scores[-1].sigmoid()
-        refine_pts = all_refine_pts[-1]
+        all_cls_scores = pred_dicts['all_cls_scores'] # S:6:(1 1200 1 17) (1 1200 4 17) (1 1200 8 17) (1 1200 16 17) (1 1200 32 17) (1 1200 64 17)
+        all_refine_pts = pred_dicts['all_refine_pts'] # S:6:(1 1200 1 3) (1 1200 4 3) (1 1200 8 3) (1 1200 16 3) (1 1200 32 3) (1 1200 64 3)
+        cls_scores = all_cls_scores[-1].sigmoid()     # S:(1 1200 64 17)
+        refine_pts = all_refine_pts[-1]               # S:(1 1200 64 3)
 
         batch_size = refine_pts.shape[0]
-        ctr_dist_thr = self.test_cfg.get('ctr_dist_thr', 3.)
-        score_thr = self.test_cfg.get('score_thr', 0.)
+        ctr_dist_thr = self.test_cfg.get('ctr_dist_thr', 3.) # 3.0
+        score_thr = self.test_cfg.get('score_thr', 0.)       # 0.5
 
         result_list = []
         for i in range(batch_size):
             refine_pts, cls_scores = refine_pts[i], cls_scores[i]
-            refine_pts = decode_points(refine_pts, self.pc_range)
+            refine_pts = decode_points(refine_pts, self.pc_range) # S:(1200 64 3)
 
             # filter weak points by distance and score
-            centers = refine_pts.mean(dim=1, keepdim=True)
-            ctr_dists = torch.norm(refine_pts - centers, dim=-1)
+            centers = refine_pts.mean(dim=1, keepdim=True)         # S:(1200 1 3)
+            ctr_dists = torch.norm(refine_pts - centers, dim=-1)   # S:(1200 64)
             mask_dist = ctr_dists < ctr_dist_thr
             mask_score = (cls_scores > score_thr).any(dim=-1)
             mask = mask_dist & mask_score
-            refine_pts = refine_pts[mask]
-            cls_scores = cls_scores[mask]
+            refine_pts = refine_pts[mask]                          # (23757 3)
+            cls_scores = cls_scores[mask]                          # (23757 17)
 
-            pts = torch.cat([refine_pts, cls_scores], dim=-1)
-            pts_infos, voxels, num_pts = self.voxel_generator(pts)
-            voxels = torch.flip(voxels, [1]).long()
-            pts, scores = pts_infos[..., :3], pts_infos[..., 3:]
-            scores = scores.sum(dim=1) / num_pts[..., None]
+            pts = torch.cat([refine_pts, cls_scores], dim=-1)      # (23757 20)
+            pts_infos, voxels, num_pts = self.voxel_generator(pts) # (17680 10 20) (17680 3) (17680)
+            voxels = torch.flip(voxels, [1]).long()                # (17680 3)
+            pts, scores = pts_infos[..., :3], pts_infos[..., 3:]   # (17680 10 3) (17680 10 17)
+            scores = scores.sum(dim=1) / num_pts[..., None]        # (17680 17)
 
             if self.test_cfg.get('padding', True):
                 occ = scores.new_zeros((self.voxel_num[0], self.voxel_num[1], 
                                         self.voxel_num[2], self.num_classes))
-                occ[voxels[:, 0], voxels[:, 1], voxels[:, 2]] = scores
-                occ = occ.permute(3, 0, 1, 2).unsqueeze(0)
+                occ[voxels[:, 0], voxels[:, 1], voxels[:, 2]] = scores  # (200 200 16 17)
+                occ = occ.permute(3, 0, 1, 2).unsqueeze(0)              # (1 17 200 200 16)
                 # padding
-                dilated_occ = F.max_pool3d(occ, 3, stride=1, padding=1)
-                eroded_occ = -F.max_pool3d(-dilated_occ, 3, stride=1, padding=1)
+                dilated_occ = F.max_pool3d(occ, 3, stride=1, padding=1)          # (1 17 200 200 16)
+                eroded_occ = -F.max_pool3d(-dilated_occ, 3, stride=1, padding=1) # (1 17 200 200 16)
                 # repalce with original occ prediction
-                original_mask = (occ > score_thr).any(dim=1, keepdim=True)
-                original_mask = original_mask.expand_as(eroded_occ)
-                eroded_occ[original_mask] = occ[original_mask]
+                original_mask = (occ > score_thr).any(dim=1, keepdim=True)       # (1 1 200 200 16)
+                original_mask = original_mask.expand_as(eroded_occ)              # (1 17 200 200 16)
+                eroded_occ[original_mask] = occ[original_mask]                   # (1 17 200 200 16)
                 # sparse dense occ
-                eroded_occ = eroded_occ.squeeze(0).permute(1, 2, 3, 0)
-                voxels = torch.nonzero((eroded_occ > score_thr).any(dim=-1))
-                scores = eroded_occ[voxels[:, 0], voxels[:, 1], voxels[:, 2], :]
+                eroded_occ = eroded_occ.squeeze(0).permute(1, 2, 3, 0)           # (200 200 16 17)
+                voxels = torch.nonzero((eroded_occ > score_thr).any(dim=-1))     # (56991 3)
+                scores = eroded_occ[voxels[:, 0], voxels[:, 1], voxels[:, 2], :] # (56991 17)
 
-            labels = scores.argmax(dim=-1)
+            labels = scores.argmax(dim=-1)                                       # (56991)
             result_list.append(dict(
                 sem_pred=labels.detach().cpu().numpy(),
                 occ_loc=voxels.detach().cpu().numpy()))

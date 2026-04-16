@@ -201,7 +201,7 @@ class OPUSV2(MVXTwoStageDetector):
         img = [img] if img is None else img
         return self.simple_test(img_metas[0], img[0], **kwargs)
 
-    def simple_test(self, img_metas, img=None, rescale=False):
+    def simple_test(self, img_metas, img=None, rescale=False,**kwargs):
         world_size = get_dist_info()[1]
         if world_size == 1:  # online
             return self.simple_test_online(img_metas, img, rescale)

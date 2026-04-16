@@ -202,19 +202,20 @@ class OPUSV1(MVXTwoStageDetector):
         img = [img] if img is None else img
         return self.simple_test(img_metas[0], img[0], **kwargs)
 
-    def simple_test(self, img_metas, img=None, rescale=False):
+    def simple_test(self, img_metas, img=None, rescale=False,**kwargs):
         world_size = get_dist_info()[1]
-        if world_size == 1:  # online
-            return self.simple_test_online(img_metas, img, rescale)
-        else:  # offline
-            return self.simple_test_offline(img_metas, img, rescale)
+        # if world_size == 1:  # online
+        #     return self.simple_test_online(img_metas, img, rescale)
+        # else:  # offline
+        #     return self.simple_test_offline(img_metas, img, rescale)
+        return self.simple_test_offline(img_metas, img, rescale)
 
-    def simple_test_offline(self, img_metas, img=None, rescale=False):
+    def simple_test_offline(self, img_metas, img=None, rescale=False,**kwargs):
         img_feats = self.extract_feat(img=img, img_metas=img_metas)
         outs = self.pts_bbox_head(img_feats, img_metas)
         return self.pts_bbox_head.get_occ(outs, img_metas[0], rescale=rescale)
 
-    def simple_test_online(self, img_metas, img=None, rescale=False):
+    def simple_test_online(self, img_metas, img=None, rescale=False,**kwargs):
         self.fp16_enabled = False
         assert len(img_metas) == 1  # batch_size = 1
 
@@ -275,7 +276,7 @@ class OPUSV1(MVXTwoStageDetector):
 
         img_feats = img_feats_reorganized
         img_metas = img_metas_reorganized
-        img_feats = cast_tensor_type(img_feats, torch.half, torch.float32)
+        img_feats = cast_tensor_type(img_feats, torch.half, torch.float32) # 4:(1 48 256 64 176) (1 48 256 32 88) (1 48 256 16 44) (1 48 256 8 22)
 
         # run occupancy predictor
         outs = self.pts_bbox_head(img_feats, img_metas)

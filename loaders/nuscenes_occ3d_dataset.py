@@ -17,9 +17,11 @@ from .utils import compose_ego2img
 
 @DATASETS.register_module()
 class NuScenesOcc3DDataset(NuScenesDataset):    
-    def __init__(self, *args, **kwargs):
+    def __init__(self, occ_root, *args, **kwargs):
         super().__init__(filter_empty_gt=False, *args, **kwargs)
+        self.occ_root = occ_root
         self.data_infos = self.load_annotations(self.ann_file)
+        self.data_infos = self.data_infos[::80][:5]
     
     def collect_cam_sweeps(self, index, into_past=150, into_future=0):
         all_sweeps_prev = []
@@ -96,8 +98,10 @@ class NuScenesOcc3DDataset(NuScenesDataset):
 
         if self.modality['use_lidar']:
             lidar_sweeps_prev, lidar_sweeps_next = self.collect_lidar_sweeps(index)
-            input_dict.update(dict(
-                pts_filename=info['lidar_path'],
+            
+            lidar_path = info['lidar_path'].replace('./data/nuscenes/',self.data_root)
+            
+            input_dict.update(dict(pts_filename=lidar_path,
                 lidar_sweeps={'prev': lidar_sweeps_prev, 'next': lidar_sweeps_next},
             ))
 
@@ -156,19 +160,19 @@ class NuScenesOcc3DDataset(NuScenesDataset):
             info = self.get_data_info(i)
             token = info['sample_token']
             scene_name = info['scene_name']
-            occ_root = 'data/nuscenes/gts/'
-            occ_file = osp.join(occ_root, scene_name, token, 'labels.npz')
+            # occ_root = 'data/nuscenes/gts/'
+            occ_file = osp.join(self.occ_root, scene_name, token, 'labels.npz')
             occ_infos = np.load(occ_file)
 
-            occ_labels = occ_infos['semantics']
-            mask_lidar = occ_infos['mask_lidar'].astype(np.bool_)
-            mask_camera = occ_infos['mask_camera'].astype(np.bool_)
-
+            occ_labels = occ_infos['semantics']                     # (200 200 16)
+            mask_lidar = occ_infos['mask_lidar'].astype(np.bool_)   # (200 200 16)
+            mask_camera = occ_infos['mask_camera'].astype(np.bool_) # (200 200 16)
+            # 将稀疏预测结果整理为密集网格
             occ_pred, _ = sparse2dense(
-                result_dict['occ_loc'],
-                result_dict['sem_pred'],
-                dense_shape=occ_labels.shape,
-                empty_value=17)
+                result_dict['occ_loc'],       # (56991 3)
+                result_dict['sem_pred'],      # (56991,)
+                dense_shape=occ_labels.shape, # (200 200 16)
+                empty_value=17)               # occ_pred: (200 200 16)
             
             metric.add_batch(occ_pred, occ_labels, mask_lidar, mask_camera)
         
@@ -202,8 +206,8 @@ class NuScenesOcc3DDataset(NuScenesDataset):
 
             token = info['token']
             scene_name = info['scene_name']
-            occ_root = 'data/nuscenes/gts/'
-            occ_file = osp.join(occ_root, scene_name, token, 'labels.npz')
+            # occ_root = 'data/nuscenes/gts/'
+            occ_file = osp.join(self.occ_root, scene_name, token, 'labels.npz')
             occ_infos = np.load(occ_file)
             gt_semantics = occ_infos['semantics']
 

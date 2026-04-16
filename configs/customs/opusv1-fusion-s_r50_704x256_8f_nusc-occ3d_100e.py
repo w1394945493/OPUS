@@ -1,9 +1,11 @@
 dataset_type = 'NuScenesOcc3DDataset'
-dataset_root = 'data/nuscenes/'
-occ_root = 'data/nuscenes/gts/'
+dataset_root = '/c20250502/wangyushen/Datasets/NuScenes/v1.0-trainval/'
+occ_root = '/c20250502/wangyushen/Datasets/occ3d_nuscenes/gts/'
+ann_root ='/c20250502/wangyushen/Datasets/NuScenes/method/superocc/'
+
 
 input_modality = dict(
-    use_lidar=True,
+    use_lidar=True,  # 使用lidar
     use_camera=True,
     use_radar=False,
     use_map=False,
@@ -201,11 +203,14 @@ test_pipeline = [
 
 data = dict(
     # workers_per_gpu=1,
-    workers_per_gpu=4,
+    # workers_per_gpu=4,
+    workers_per_gpu=0,
     train=dict(
         type=dataset_type,
         data_root=dataset_root,
-        ann_file=dataset_root + 'nuscenes_infos_train_sweep.pkl',
+        occ_root=occ_root,
+        # ann_file=dataset_root + 'nuscenes_infos_train_sweep.pkl',
+        ann_file=ann_root + 'nuscenes_infos_train_sweep.pkl',
         pipeline=train_pipeline,
         classes=object_names,
         modality=input_modality,
@@ -215,7 +220,9 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=dataset_root,
-        ann_file=dataset_root + 'nuscenes_infos_val_sweep.pkl',
+        occ_root=occ_root,
+        # ann_file=dataset_root + 'nuscenes_infos_test_sweep.pkl',
+        ann_file=ann_root + 'nuscenes_infos_val_sweep.pkl',
         pipeline=test_pipeline,
         classes=object_names,
         modality=input_modality,
@@ -224,7 +231,9 @@ data = dict(
     test=dict(
         type=dataset_type,
         data_root=dataset_root,
-        ann_file=dataset_root + 'nuscenes_infos_test_sweep.pkl',
+        occ_root=occ_root,
+        # ann_file=dataset_root + 'nuscenes_infos_test_sweep.pkl',
+        ann_file=ann_root + 'nuscenes_infos_val_sweep.pkl',
         pipeline=test_pipeline,
         classes=object_names,
         modality=input_modality,
@@ -260,7 +269,8 @@ total_epochs = 100
 batch_size = 8
 
 # load pretrained weights
-load_from = 'pretrain/fusion_pretrain_model.pth'
+# load_from = 'pretrain/fusion_pretrain_model.pth'
+load_from = ''
 revise_keys = []
 
 # resume the last training
